@@ -1,0 +1,64 @@
+version: "3.8"
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=<CHANGE_ME_N8N_PASSWORD>
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_SECURE_COOKIE=false
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - soc_network
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=<CHANGE_ME_INFLUXDB_PASSWORD>
+      - DOCKER_INFLUXDB_INIT_ORG=wazuh-soc
+      - DOCKER_INFLUXDB_INIT_BUCKET=alerts
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=<CHANGE_ME_INFLUXDB_TOKEN>
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    networks:
+      - soc_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=<CHANGE_ME_GRAFANA_PASSWORD>
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - influxdb
+    networks:
+      - soc_network
+
+networks:
+  soc_network:
+    driver: bridge
+
+volumes:
+  n8n_data:
+  influxdb_data:
+  grafana_data:

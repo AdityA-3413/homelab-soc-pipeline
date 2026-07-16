@@ -1,0 +1,2221 @@
+{
+  "name": "Wazuh SOC Dashboard STABLE CPY v12.9.12",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wazuh-alerts",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook - Receive Alerts",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -5168,
+        784
+      ],
+      "webhookId": "25d04636-a4d4-456c-9a67-9446b533d942",
+      "id": "ef62981b-629e-4f65-9240-d7c090c9d6e7"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\n\nlet severity = 'low';\nconst level = body.rule?.level || 0;\nif (level >= 12)      severity = 'critical';\nelse if (level >= 7)  severity = 'high';\nelse if (level >= 4)  severity = 'medium';\n\nconst alert = {\n  id:        body.id || Date.now().toString(),\n  timestamp: body.timestamp || new Date().toISOString(),\n  rule: {\n    description: body.rule?.description || 'Security alert detected',\n    level:       level,\n    id:          body.rule?.id || 'unknown'\n  },\n  agent: {\n    name: body.agent?.name || 'Unknown Agent',\n    id:   body.agent?.id   || 'unknown'\n  },\n  data: {\n    ...(body.data || {}),\n    srcip:        body.data?.srcip        || '',\n    dstip:        body.data?.dstip        || '',\n    // Windows AD/auth target user\n    dstuser:      body.data?.dstuser\n                  || body.data?.win?.eventdata?.targetUserName\n                  || body.data?.win?.eventdata?.TargetUserName\n                  || '',\n    // Source user (lateral movement / privilege escalation context)\n    srcuser:      body.data?.srcuser\n                  || body.data?.win?.eventdata?.subjectUserName\n                  || body.data?.win?.eventdata?.SubjectUserName\n                  || '',\n    // Process context (malware, ransomware, C2 often visible here)\n    program_name: body.data?.program_name\n                  || body.data?.win?.eventdata?.image\n                  || body.data?.win?.eventdata?.Image\n                  || body.data?.win?.eventdata?.processName\n                  || '',\n    protocol:     body.data?.protocol || '',\n    action:       body.data?.action   || '',\n  },\n  full_log:    body.full_log || '',\n  severity:    severity,\n  description: body.rule?.description || 'Security alert detected'\n};\n\n\n// Extract syscheck (FIM) data if present\nconst syscheck = {\n  path:      body.syscheck?.path      || body.data?.path      || '',\n  event:     body.syscheck?.event     || '',\n  sha1_after: body.syscheck?.sha1_after || '',\n  size_after: body.syscheck?.size_after || '',\n  uname_after: body.syscheck?.uname_after || '',\n};\n\nreturn { json: { alert, syscheck } };\n"
+      },
+      "name": "Process Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -4960,
+        784
+      ],
+      "id": "9f65938d-f1c9-4e90-b2f4-0eb5cde2543f"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  const alert = item.json.alert;\n  let sourceIP = 'unknown';\n\n  if (alert.data?.srcip) {\n    sourceIP = alert.data.srcip;\n  } else if (alert.data?.win?.eventdata?.ipAddress) {\n    sourceIP = alert.data.win.eventdata.ipAddress;\n  } else if (alert.data?.win?.eventdata?.sourceAddress) {\n    sourceIP = alert.data.win.eventdata.sourceAddress;\n  } else if (alert.data?.win?.eventdata?.IpAddress) {\n    sourceIP = alert.data.win.eventdata.IpAddress;\n  } else if (alert.data?.['aws.source_ip_address']) {\n    sourceIP = alert.data['aws.source_ip_address'];\n  } else if (alert.data?.aws?.source_ip_address) {\n    sourceIP = alert.data.aws.source_ip_address;\n  } else if (alert.data?.['data.srcip']) {\n    sourceIP = alert.data['data.srcip'];\n  } else if (alert.full_log) {\n    // FIX: Prevent computer freeze by only searching the first 1000 characters\n    const safeLog = String(alert.full_log).substring(0, 1000);\n    const ipRegex = /(?:rhost=|from |src[: =]|SRC=)(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})/i;\n    const match = safeLog.match(ipRegex);\n    if (match) sourceIP = match[1];\n  }\n\n  function isPrivateOrUnknown(ip) {\n    if (!ip || ip === 'unknown') return true;\n    const parts = ip.split('.').map(Number);\n    if (parts.length !== 4 || parts.some(isNaN)) return true;\n    const [a, b] = parts;\n    return (\n      a === 127 || a === 10 ||\n      (a === 172 && b >= 16 && b <= 31) ||\n      (a === 192 && b === 168)\n    );\n  }\n\n  item.json.sourceIP    = sourceIP;\n  item.json.isLocalhost = isPrivateOrUnknown(sourceIP);\n  item.json.shouldCheckVT = !isPrivateOrUnknown(sourceIP);\n}\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4752,
+        784
+      ],
+      "id": "93295379-8c7a-4c16-bdf7-6bd0cd26f386",
+      "name": "Extract IP Address"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0e0352b4-d55f-466d-a2fe-ff664ed928b9",
+              "leftValue": "={{ ($json.alert?.rule?.level || 0) >= 5 && $json.isLocalhost === false }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -4544,
+        784
+      ],
+      "id": "ac0a0883-640e-43ac-aa47-dd70a060126c",
+      "name": "If",
+      "notes": "true=external IP level>=7 full pipeline | false=localhost/private/low-level normalize then silent log"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json;\nconst alert = raw.alert || {};\nconst syscheck = raw.syscheck || {};\n\n// FIX: Give FIM alerts an actual decision instead of just dropping them\nlet decision = 'monitor';\nlet shouldAutoExecute = false;\nlet executionReason = 'Skipped: internal/private IP or low-level alert';\n\nif (syscheck.path) {\n  decision = 'investigate'; // Escalate local file changes to an analyst\n  shouldAutoExecute = true;\n  executionReason = 'Local File Integrity Alert: ' + syscheck.path;\n}\n\nreturn {\n  json: {\n    syscheck,\n    id: alert.id || raw.id || Date.now().toString(),\n    timestamp: alert.timestamp || raw.timestamp || new Date().toISOString(),\n    rule: alert.rule || { description: 'Security alert', level: 0, id: 'unknown' },\n    agent: alert.agent || { name: 'Unknown Agent', id: 'unknown' },\n    severity: alert.severity || raw.severity || 'low',\n    description: alert.rule?.description || alert.description || 'Security alert',\n    sourceIP: raw.sourceIP || 'unknown',\n    isLocalhost: raw.isLocalhost !== undefined ? raw.isLocalhost : true,\n    ai_threat_type: 'unanalyzed',\n    ai_severity: 0,\n    ai_mitre_id: 'unknown',\n    ai_confidence: 0,\n    ai_action: 'monitor',\n    ai_reason: 'Localhost/private IP or low-level alert — skipped AI analysis',\n    ip_history_count: 0,\n    ip_velocity_5m: 0,\n    ip_last_decision: 'none',\n    decision: decision,\n    shouldAutoExecute: shouldAutoExecute,\n    executionReason: executionReason,\n    effectiveCount: 0,\n    count24h: 0,\n    velocity5m: 0,\n    processed_at: new Date().toISOString()\n  }\n};"
+      },
+      "name": "Normalize Localhost Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4320,
+        1040
+      ],
+      "id": "ae1feed6-7de2-4f96-bd38-21b25c848163"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://<YOUR_WAZUH_SERVER_IP>:8086/api/v2/query?org=wazuh-soc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Token <YOUR_INFLUXDB_TOKEN>"
+            },
+            {
+              "name": "Accept",
+              "value": "application/csv"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/vnd.flux",
+        "body": "=from(bucket: \"alerts\") |> range(start: -24h) |> filter(fn: (r) => r._measurement == \"alerts\") |> filter(fn: (r) => r.source_ip == \"{{ $('Extract IP Address').first().json.sourceIP }}\") |> filter(fn: (r) => r._field == \"rule_level\") |> group(columns: []) |> count() |> yield(name: \"count\")",
+        "options": {}
+      },
+      "id": "e88baae1-fe01-4ce2-9b05-92719b860a60",
+      "name": "Query IP History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4000,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseBody = $input.item.json.body || $input.item.json.data || '';\nconst alertData = $('Extract IP Address').first().json;\n\nlet ipCount = 0;\n\ntry {\n  const lines = String(responseBody).split('\\n').filter(l => l.trim() && !l.startsWith('#'));\n  if (lines.length >= 2) {\n    const headers = lines[0].split(',');\n    const valueIdx = headers.findIndex(h => h.trim() === '_value');\n    if (valueIdx >= 0) {\n      for (let i = 1; i < lines.length; i++) {\n        const vals = lines[i].split(',');\n        if (vals[valueIdx]) ipCount += parseInt(vals[valueIdx]) || 0;\n      }\n    }\n  }\n} catch(e) { ipCount = 5; }\n\nreturn { json: { ...alertData, ip_history_count: ipCount } };"
+      },
+      "id": "922b211d-30e7-422f-bd19-1da2c73107a4",
+      "name": "Parse IP History",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3888,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://<YOUR_WAZUH_SERVER_IP>:8086/api/v2/query?org=wazuh-soc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Token <YOUR_INFLUXDB_TOKEN>"
+            },
+            {
+              "name": "Accept",
+              "value": "application/csv"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/vnd.flux",
+        "body": "=from(bucket: \"alerts\") |> range(start: -5m) |> filter(fn: (r) => r._measurement == \"alerts\") |> filter(fn: (r) => r.source_ip == \"{{ $('Extract IP Address').first().json.sourceIP }}\") |> filter(fn: (r) => r._field == \"rule_level\") |> group(columns: []) |> count() |> yield(name: \"count\")",
+        "options": {}
+      },
+      "id": "0bdddec5-699f-4ec9-9cad-fdebb3b105ac",
+      "name": "Query 5min Velocity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3728,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseBody = $input.item.json.body || $input.item.json.data || '';\nconst prevData = $('Parse IP History').first().json;\n\nlet velocity5m = 0;\n\ntry {\n  const lines = String(responseBody).split('\\n').filter(l => l.trim() && !l.startsWith('#'));\n  if (lines.length >= 2) {\n    const headers = lines[0].split(',');\n    const valueIdx = headers.findIndex(h => h.trim() === '_value');\n    if (valueIdx >= 0) {\n      for (let i = 1; i < lines.length; i++) {\n        const vals = lines[i].split(',');\n        if (vals[valueIdx]) velocity5m += parseInt(vals[valueIdx]) || 0;\n      }\n    }\n  }\n} catch(e) { velocity5m = 0; }\n\nreturn { json: { ...prevData, ip_velocity_5m: velocity5m } };"
+      },
+      "id": "c727acef-3083-44bc-9f3d-4602cd429920",
+      "name": "Parse 5min Velocity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3584,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://<YOUR_WAZUH_SERVER_IP>:8086/api/v2/query?org=wazuh-soc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Token <YOUR_INFLUXDB_TOKEN>"
+            },
+            {
+              "name": "Accept",
+              "value": "application/csv"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/vnd.flux",
+        "body": "=from(bucket: \"alerts\") |> range(start: -7d) |> filter(fn: (r) => r._measurement == \"alerts\") |> filter(fn: (r) => r.source_ip == \"{{ $('Extract IP Address').first().json.sourceIP }}\") |> filter(fn: (r) => r._field == \"rule_level\") |> group(columns: []) |> sort(columns: [\"_time\"], desc: true) |> limit(n: 1) |> yield(name: \"last\")",
+        "options": {}
+      },
+      "id": "569a9363-eff5-4d1b-b894-98e91d22ef5a",
+      "name": "Query Last Decision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3440,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseBody = $input.item.json.body || $input.item.json.data || '';\nconst prevData = $('Parse 5min Velocity').first().json;\n\nlet lastDecision = 'none';\n\ntry {\n  const lines = String(responseBody).split('\\n').filter(l => l.trim() && !l.startsWith('#'));\n  if (lines.length >= 2) {\n    const headers = lines[0].split(',');\n    const decisionIdx = headers.findIndex(h => h.trim() === 'decision');\n    let latestDecision = 'none';\n    for (let i = 1; i < lines.length; i++) {\n      const vals = lines[i].split(',');\n      const rowDecision = decisionIdx >= 0 ? (vals[decisionIdx] || '').trim() : '';\n      if (rowDecision && rowDecision !== '' && rowDecision !== 'none') {\n        if (latestDecision === 'none') latestDecision = rowDecision;\n      }\n    }\n    lastDecision = latestDecision;\n  }\n} catch(e) { lastDecision = 'investigate'; }\n\nreturn { json: { ...prevData, ip_last_decision: lastDecision } };"
+      },
+      "id": "54f91555-58fd-4787-8cd3-9feb6458a37b",
+      "name": "Parse Last Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3296,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://<YOUR_OLLAMA_HOST_IP>:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.ollamaPayload }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "name": "Ollama AI Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -3152,
+        704
+      ],
+      "id": "c270340d-8072-4438-9485-cd83e93ceffe"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allInputs  = $input.all();\nconst ollamaData = allInputs[0]?.json || {};\n\nlet rawResponse = ollamaData.message?.content || ollamaData.response || '';\nrawResponse = rawResponse.replace(/```json|```/g, '').trim();\n\n// Detect if Ollama was unreachable or returned empty\nconst ai_offline = !rawResponse;\n\nlet aiData = {};\ntry {\n  const match = rawResponse.match(/\\{[\\s\\S]*\\}/);\n  if (match) aiData = JSON.parse(match[0]);\n} catch(e) {\n  aiData = {};\n}\n\n// If parse failed or offline — safe fallback\nif (!aiData.threat_type) {\n  aiData = {\n    threat_type: 'unknown', severity: 5, confidence: 0.3,\n    mitre_id: 'unknown', action: 'monitor',\n    reason: ai_offline ? 'AI OFFLINE — conservative fallback applied' : 'Parse failed — conservative fallback applied'\n  };\n}\n\nlet confidence = parseFloat(aiData.confidence) || 0.5;\nif (confidence > 1.0) confidence = confidence / 100.0;\n\nlet alertData = {};\ntry {\n  alertData = $('Parse Last Decision').first().json || {};\n} catch(e) {\n  try { alertData = $('Extract IP Address').first().json || {}; } catch(e2) { alertData = {}; }\n}\n\nconst agentName   = alertData.alert?.agent?.name || alertData.agent?.name || 'unknown';\nconst severity    = alertData.alert?.severity    || alertData.severity    || 'unknown';\nconst sourceIP    = alertData.sourceIP           || 'unknown';\nconst ruleLevel   = alertData.alert?.rule?.level || alertData.rule?.level || 0;\nconst description = alertData.alert?.rule?.description || alertData.rule?.description || '';\nconst alertId     = alertData.alert?.id    || alertData.id;\nconst timestamp   = alertData.alert?.timestamp || alertData.timestamp;\nconst rule        = alertData.alert?.rule  || alertData.rule;\n\nconst threatType = (aiData.threat_type || 'unknown').toLowerCase().replace(/[\\s]+/g, '_');\nconst mitreId    = aiData.mitre_id || 'unknown';\nconst aiAction   = aiData.action   || 'monitor';\nconst aiReason   = aiData.reason   || '';\nconst aiSeverity = Math.min(10, Math.max(1, parseInt(aiData.severity) || 5));\n\nreturn {\n  json: {\n    id: alertId, timestamp, rule,\n    agent:       { name: agentName, id: alertData.agent?.id || alertData.alert?.agent?.id || '001' },\n    severity, description, sourceIP,\n    isLocalhost: alertData.isLocalhost || false,\n    ai_threat_type: threatType, ai_severity: aiSeverity, ai_mitre_id: mitreId,\n    ai_confidence:  confidence,  ai_action: aiAction,    ai_reason: aiReason,\n    ai_offline:     ai_offline,\n    ip_history_count: alertData.ip_history_count || 0,\n    ip_velocity_5m:   alertData.ip_velocity_5m   || 0,\n    ip_last_decision: alertData.ip_last_decision || 'none',\n    processed_at: new Date().toISOString()\n  }\n};\n"
+      },
+      "name": "Combine Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -2928,
+        864
+      ],
+      "id": "a17c5330-1ce1-4443-ada1-d90bd07624f8"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data       = $input.item.json;\nconst sourceIP   = data.sourceIP   || 'unknown';\nconst ruleLevel  = data.rule?.level || 0;\nconst ruleId     = String(data.rule?.id   || '');\nconst ruleDesc   = String(data.rule?.description || '').toLowerCase();\nconst aiAction   = data.ai_action   || 'monitor';\nconst threatType = (data.ai_threat_type || '').toLowerCase();\nconst aiOffline  = data.ai_offline  === true;\n\n// ── MITRE map — rule ID → guaranteed accurate MITRE ID \nconst MITRE_MAP = {\n  '5716': 'T1110', '5710': 'T1021', '5715': 'T1078', '1001': 'T1082', '1002': 'T1046',\n  '5402': 'T1548', '5403': 'T1548', '5501': 'T1136', '5502': 'T1531', '87002': 'T1078',\n  '87105': 'T1055', '87106': 'T1055', '87110': 'T1071', '510': 'T1014', '511': 'T1014',\n  '533': 'T1014', '5903': 'T1059', '5904': 'T1059', '31103': 'T1190', '31104': 'T1190',\n  '62300': 'T1486', '62301': 'T1486', '62302': 'T1486', '100200': 'T1059', '100201': 'T1059',\n  '100202': 'T1059', '100020': 'T1486', '100021': 'T1486',\n};\nconst finalMitreId = MITRE_MAP[ruleId] || data.ai_mitre_id || 'unknown';\n\nif (aiAction === 'isolate_host') {\n  const agentName = data.agent?.name || '';\n  if (agentName === 'wazuh-lab') {\n    return [{ json: { ...data, decision: 'investigate', shouldAutoExecute: true,\n      executionReason: 'Isolation skipped: SOC server protected — escalated to investigate' }}];\n  }\n  return [{ json: { ...data, decision: 'isolate_host', shouldAutoExecute: true,\n    executionReason: 'AI classified as ransomware/host compromise' }}];\n}\n\n// ── isLocalhost → always monitor (no action on internal-only traffic)\nif (data.isLocalhost) {\n  return { json: { ...data, decision: 'monitor', shouldAutoExecute: false, ai_mitre_id: finalMitreId, executionReason: 'Skipped: internal IP', effectiveCount: 0 }};\n}\n\n// ── Force-isolate list — checked BEFORE unknown-IP shortcut so FIM ransomware alerts are never downgraded\nconst ISOLATE_RULE_IDS = [\n  '510', '511', '533', '5903', '5904',\n  '62300', '62301', '62302',\n  '87105', '87106', '87110',\n  '100200', '100201', '100202',\n  '100020', '100021'   // ← Atomic Red Team ransomware rules\n];\nconst ISOLATE_DESC_KEYWORDS = [\n  'ransomware', 'cobalt strike', 'cobaltstrike', 'rootkit', 'trojan',\n  'backdoor', 'lateral movement', 'mimikatz', 'credential dump',\n  'process injection', 'process hollowing'\n];\n\nconst keywordMatch = ISOLATE_DESC_KEYWORDS.some(k => ruleDesc.includes(k));\nconst forceIsolate = ISOLATE_RULE_IDS.includes(ruleId) || (keywordMatch && ruleLevel >= 10);\n\nif (forceIsolate) {\n  const agentName = data.agent?.name || '';\n  if (agentName === 'wazuh-lab') {\n    return { json: { ...data, decision: 'investigate', shouldAutoExecute: true,\n      ai_mitre_id: finalMitreId, executionReason: 'Isolation skipped: SOC server protected — escalated to investigate' }};\n  }\n  return { json: { ...data, decision: 'isolate_host', shouldAutoExecute: true,\n    ai_threat_type: 'malware', ai_mitre_id: finalMitreId, ai_action: 'isolate_host',\n    ai_reason: `Host compromise detected — immediate isolation required`,\n    executionReason: `Force isolate: Wazuh rule ${ruleId} or high-level keyword matched`,\n    effectiveCount: 99 }};\n}\n\n// ── Unknown IP shortcut (only reached if NOT a force-isolate rule)\nif (sourceIP === 'unknown') {\n  return { json: { ...data, decision: 'investigate', shouldAutoExecute: true, ai_mitre_id: finalMitreId, executionReason: 'Unknown IP detected — Manual investigation required', effectiveCount: 7 }};\n}\n\nif (aiAction === 'revoke_access') {\n  return { json: { ...data, decision: 'investigate', shouldAutoExecute: true, ai_mitre_id: finalMitreId, executionReason: 'Insider threat — human review required', effectiveCount: 0 }};\n}\n\n// ── Investigate overrides\nconst INVESTIGATE_RULE_IDS = ['5715', '5503', '5501'];\nif (INVESTIGATE_RULE_IDS.includes(ruleId)) {\n  return { json: { ...data, decision: 'investigate', shouldAutoExecute: true, ai_mitre_id: finalMitreId, executionReason: `Force investigate: Wazuh rule ${ruleId}`, effectiveCount: 7 }};\n}\n\n// ── Ollama threat-type isolate\nconst isC2 = threatType === 'c2_beacon' || threatType === 'c2_communication' || threatType === 'c2' || threatType.startsWith('c2_');\nif (threatType.includes('ransomware') || threatType.includes('malware') || isC2 || threatType.includes('beacon')) {\n  return { json: { ...data, decision: 'isolate_host', shouldAutoExecute: true, ai_mitre_id: finalMitreId, executionReason: `Critical: ${threatType} detected — isolating host`, effectiveCount: 99 }};\n}\n\n// ── Standard effectiveCount escalation\nconst count24h    = parseInt(data.ip_history_count) || 0;\nconst velocity5m  = parseInt(data.ip_velocity_5m)   || 0;\nconst lastDecision = data.ip_last_decision || 'none';\nlet effectiveCount = count24h;\n\nif (velocity5m >= 10) effectiveCount += 4; else if (velocity5m >= 5) effectiveCount += 2; else if (velocity5m >= 2) effectiveCount += 1;\nif (lastDecision === 'block_ip') effectiveCount += 3; else if (lastDecision === 'investigate') effectiveCount += 2;\nif (ruleLevel >= 12) effectiveCount += 1;\n\nlet decision = 'monitor', shouldAutoExecute = false, executionReason = '';\nif (effectiveCount >= 15) { decision = 'block_ip';     shouldAutoExecute = true;  executionReason = `Auto-block: effective count ${effectiveCount}`; }\nelse if (effectiveCount >= 7)  { decision = 'investigate'; shouldAutoExecute = true;  executionReason = `Investigate: effective count ${effectiveCount}`; }\nelse if (effectiveCount >= 4)  { decision = 'monitor';     shouldAutoExecute = true;  executionReason = `Monitor: effective count ${effectiveCount}`; }\nelse                           { decision = 'monitor';     shouldAutoExecute = false; executionReason = `Log only: effective count ${effectiveCount}`; }\n\nif (aiOffline) executionReason = '[AI OFFLINE — fallback mode] ' + executionReason;\n\nreturn { json: { ...data, decision, shouldAutoExecute, executionReason, effectiveCount, count24h, velocity5m, ai_mitre_id: finalMitreId } };"
+      },
+      "name": "AI Decision Engine",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -2720,
+        784
+      ],
+      "id": "84f26374-cd63-466b-abf3-1b81affc7847"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.item.json;\n\nconst cleanTag = (v) => String(v || 'unknown').replace(/[,=\\s\"\\\\]+/g, '_').replace(/^_+|_+$/g, '').substring(0, 80) || 'unknown';\nconst cleanStr = (v) => String(v || '').replace(/\\\\/g, '\\\\\\\\').replace(/\"/g, '\\\\\"').replace(/[\\n\\r\\t]/g, ' ').trim().substring(0, 150);\nconst num = (v, def=0) => { const n = parseFloat(v); return isNaN(n) ? def : n; };\n\nconst severity   = cleanTag(d.severity || d.alert?.severity);\nconst agent      = cleanTag(d.agent?.name || d.alert?.agent?.name);\nconst attackType = cleanTag(d.ai_threat_type || 'unanalyzed');\nconst decision   = cleanTag(d.decision || 'monitor');\nconst sourceIP   = cleanTag(d.sourceIP);\nconst mitreId    = cleanTag(d.ai_mitre_id || 'unknown');\nconst ruleLevel  = num(d.rule?.level || d.alert?.rule?.level, 0);\nconst confidence = num(d.ai_confidence, 0.0);\nconst aiSeverity = num(d.ai_severity, 0);\nconst autoExec   = (d.shouldAutoExecute === true) ? 1 : 0;\nconst reason     = cleanStr(d.ai_reason || '');\n\nconst lineProtocol = `alerts,host=wazuh,severity=${severity},agent=${agent},attack_type=${attackType},decision=${decision},source_ip=${sourceIP},mitre_id=${mitreId} rule_level=${ruleLevel},confidence=${confidence},ai_severity=${aiSeverity},auto_execute=${autoExec},reason=\"${reason}\"`;\n\nreturn { json: { ...d, lineProtocol } };"
+      },
+      "id": "43bbe30b-771b-47b4-b8b8-645b5ecfc214",
+      "name": "Build Line Protocol",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2544,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://<YOUR_WAZUH_SERVER_IP>:8086/api/v2/write?org=wazuh-soc&bucket=alerts&precision=s",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Token <YOUR_INFLUXDB_TOKEN>"
+            },
+            {
+              "name": "Content-Type",
+              "value": "text/plain; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/plain; charset=utf-8",
+        "body": "={{ $json.lineProtocol }}",
+        "options": {}
+      },
+      "name": "Write to InfluxDB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -2512,
+        592
+      ],
+      "id": "31f0d1d1-fc56-4810-ac2a-abb43bbdb298"
+    },
+    {
+      "parameters": {
+        "jsCode": "return { json: { success: true, message: 'Alert processed and stored in InfluxDB', influxdb_written: true } };"
+      },
+      "name": "Save to File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -2304,
+        592
+      ],
+      "id": "14ddddaf-bc53-4ed3-8d5d-8c5e863c598c"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "name": "Respond - Alert Saved",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -2096,
+        592
+      ],
+      "id": "38f95681-dd82-4b56-bb7e-8d7cb6b19e98"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "auto-exec-check-001",
+              "leftValue": "={{ $json.shouldAutoExecute || $json.ai_action === 'isolate_host' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "name": "Should Auto Execute?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2512,
+        976
+      ],
+      "id": "3ce9af83-909a-449a-bd0a-c4a6480d1ca0"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.decision }}",
+                    "rightValue": "block_ip",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8d704b5c-cc2a-4618-ad99-06c4b4ef1bd8"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "block_ip"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.decision }}",
+                    "rightValue": "isolate_host",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "d193b809-86e9-4676-9af9-5a47431e5106"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "isolate_host"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.decision }}",
+                    "rightValue": "investigate",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8369363f-598c-4234-aebf-ca998abaddde"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "investigate"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.decision }}",
+                    "rightValue": "revoke_access",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "7ad68c1c-e014-4b0e-9149-4ee9cfcea77a"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "revoke_access"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.decision }}",
+                    "rightValue": "monitor",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "dbff5d8a-6906-4090-88f6-5bed7b62711b"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "monitor"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.decision }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "isNotEmpty"
+                    },
+                    "id": "5dfba10d-2832-4188-82eb-98b213fe4cdc"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "fallback"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Action Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -2320,
+        1088
+      ],
+      "id": "fa028de1-1891-4826-8e43-4d669af05852"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://<YOUR_WAZUH_SERVER_IP>:8086/api/v2/query?org=wazuh-soc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Token <YOUR_INFLUXDB_TOKEN>"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/vnd.flux"
+            },
+            {
+              "name": "Accept",
+              "value": "application/csv"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/vnd.flux",
+        "body": "=from(bucket: \"alerts\")\n  |> range(start: -300s)\n  |> filter(fn: (r) => r._measurement == \"telegram_sent\")\n  |> filter(fn: (r) => r.decision == \"{{ $('AI Decision Engine').first().json.decision }}\")\n  |> filter(fn: (r) => r.agent == \"{{ $('AI Decision Engine').first().json.agent?.name || 'unknown' }}\")\n  |> filter(fn: (r) => r._field == \"sent\")\n  |> group(columns: [])\n  |> count()\n  |> yield(name: \"count\")",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "25ba17f9-bcc2-4bef-959f-6838e04847f9",
+      "name": "Query Recent Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -2128,
+        832
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseBody = $input.item.json.body || $input.item.json.data || '';\nlet recentCount = 0;\n\ntry {\n  const lines = String(responseBody).split('\\n').filter(l => l.trim() && !l.startsWith('#'));\n  if (lines.length >= 2) {\n    const headers = lines[0].split(',');\n    const valueIdx = headers.findIndex(h => h.trim() === '_value');\n    if (valueIdx >= 0) {\n      for (let i = 1; i < lines.length; i++) {\n        const vals = lines[i].split(',');\n        if (vals[valueIdx]) recentCount += parseInt(vals[valueIdx]) || 0;\n      }\n    }\n  }\n} catch(e) { recentCount = 0; }\n\n// Threshold is now > 0 (not > 1) because we query actual sent messages not processed alerts\n// If ANY telegram was sent for this IP+decision in the last 300s, suppress\nconst suppressDuplicate = recentCount > 0;\nconst dec = $('AI Decision Engine').first().json.decision;\n\nreturn {\n  json: {\n    ...$('AI Decision Engine').first().json,\n    suppress_duplicate: suppressDuplicate,\n    recent_telegram_sent_count: recentCount,\n    tg_dedup_note: suppressDuplicate\n      ? `Telegram already sent for ${dec} on this IP in last 300s (sent_count: ${recentCount}) — suppressing`\n      : `No recent Telegram sent for this IP+decision — proceeding`\n  }\n};"
+      },
+      "id": "8655cc42-d41b-42e3-aa8d-90ef5f13f4d1",
+      "name": "Parse Telegram Dedup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1888,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "skip-dup-check",
+              "leftValue": "={{ $json.suppress_duplicate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "false"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "dd4d4035-7cb4-44e7-b35d-a1b61e164a96",
+      "name": "Skip If Duplicate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1680,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"chat_id\": <YOUR_TELEGRAM_CHAT_ID>, \"parse_mode\": \"HTML\", \"text\": \"{{ $('AI Decision Engine').first().json.decision === 'block_ip' ? '🚫' : $('AI Decision Engine').first().json.decision === 'investigate' ? '🔍' : $('AI Decision Engine').first().json.decision === 'monitor' ? '👀' : $('AI Decision Engine').first().json.decision === 'isolate_host' ? '🔒' : 'ℹ️' }} <b>WAZUH SOC — {{ ($('AI Decision Engine').first().json.decision || 'monitor').toUpperCase() }}</b>\\n\\n<b>IP:</b> {{ $('AI Decision Engine').first().json.sourceIP || 'unknown' }}\\n<b>Decision:</b> {{ ($('AI Decision Engine').first().json.decision || 'unknown').toUpperCase() }}\\n<b>Count 24h:</b> {{ $('AI Decision Engine').first().json.ip_history_count || 0 }} | <b>Velocity 5min:</b> {{ $('AI Decision Engine').first().json.ip_velocity_5m || 0 }}\\n<b>Effective Count:</b> {{ $('AI Decision Engine').first().json.effectiveCount || 0 }}\\n<b>Last Decision:</b> {{ $('AI Decision Engine').first().json.ip_last_decision || 'none' }}\\n<b>Rule Level:</b> {{ $('AI Decision Engine').first().json.rule?.level || 0 }}/15\\n<b>Attack Type:</b> {{ $('AI Decision Engine').first().json.ai_threat_type || 'unknown' }}\\n<b>MITRE:</b> {{ $('AI Decision Engine').first().json.ai_mitre_id || 'unknown' }}\\n<b>Reason:</b> {{ $('AI Decision Engine').first().json.executionReason || $('AI Decision Engine').first().json.ai_reason || 'N/A' }}\"}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "137cc5df-0108-4b9f-9854-e197da5890d3",
+      "name": "Telegram Notify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -1056,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "route-block-check",
+              "leftValue": "={{ $('AI Decision Engine').first().json.decision }}",
+              "rightValue": "block_ip",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "83010651-7749-4734-99ae-e47f87e415db",
+      "name": "Route After Telegram",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -848,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.19.0.1:9999",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ ip: $('AI Decision Engine').first().json.sourceIP, action: 'block' }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 5000
+        }
+      },
+      "id": "207ad1d5-9129-4a59-bdb2-598b2a1fdb2f",
+      "name": "Block IP via Local Blocker",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1264,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('AI Decision Engine').first().json;\n\nconst cleanTag = (v) => String(v || 'unknown').replace(/[,=\\s\"\\\\]+/g, '_').replace(/^_+|_+$/g, '').substring(0, 80) || 'unknown';\nconst cleanStr = (v) => String(v || '').replace(/\\\\/g, '\\\\\\\\').replace(/\"/g, '\\\\\"').replace(/[\\n\\r\\t]/g, ' ').trim().substring(0, 150);\nconst num = (v, def=0) => { const n = parseFloat(v); return isNaN(n) ? def : n; };\n\nconst actionTaken = cleanTag(data.decision || 'monitor');\nconst sourceIP    = cleanTag(data.sourceIP || 'unknown');\nconst agentName   = cleanTag(data.agent?.name || 'unknown');\nconst mitreId     = cleanTag(data.ai_mitre_id || 'unknown');\nconst attackType  = cleanTag(data.ai_threat_type || 'unknown');\nconst severity    = cleanTag(data.severity || 'unknown');\nconst autoExec    = (data.shouldAutoExecute === true) ? 1 : 0;\nconst confidence  = parseFloat(data.ai_confidence) || 0;\nconst aiSeverity  = parseInt(data.ai_severity) || 0;\nconst ruleLevel   = parseInt(data.rule?.level) || 0;\nconst reason      = cleanStr(data.ai_reason || data.executionReason || '');\n\nconst alertLine = `decisions,host=wazuh,severity=${severity},agent=${agentName},attack_type=${attackType},decision=${actionTaken},source_ip=${sourceIP},mitre_id=${mitreId} rule_level=${ruleLevel},confidence=${confidence},ai_severity=${aiSeverity},auto_execute=${autoExec},reason=\"${reason}\"`;\n\n// Only write to blocked_ips bucket when block actually succeeded\n// block_success is set by Verify Block Result node\n// If block failed, block_success is false/undefined — don't record as blocked\nconst blockActuallySucceeded = $input.item.json.block_success === true;\nconst shouldWriteBlockState = (actionTaken === 'block_ip') && blockActuallySucceeded;\nlet blockedLineProtocol = null;\nif (shouldWriteBlockState) {\n  blockedLineProtocol = `blocked_ips,source_ip=${sourceIP},agent=${agentName},attack_type=${attackType} blocked=1,rule_level=${ruleLevel},reason=\"${reason}\"`;\n}\n\nreturn {\n  json: {\n    ...data,\n    action_logged: true, action_taken: actionTaken,\n    lineProtocol: alertLine,\n    blockedLineProtocol,\n    shouldWriteBlockState\n  }\n};"
+      },
+      "name": "Log Action to InfluxDB",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        528
+      ],
+      "id": "18a40638-9759-4fef-aaec-2faa928d9b51"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://<YOUR_WAZUH_SERVER_IP>:8086/api/v2/write?org=wazuh-soc&bucket=alerts&precision=s",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Token <YOUR_INFLUXDB_TOKEN>"
+            },
+            {
+              "name": "Content-Type",
+              "value": "text/plain; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/plain; charset=utf-8",
+        "body": "={{ $json.lineProtocol }}",
+        "options": {}
+      },
+      "name": "Write Action to InfluxDB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -16,
+        928
+      ],
+      "id": "db5d3e07-ac63-4cfb-9c08-2f5b9c38a458"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "block-state-check",
+              "leftValue": "={{ $('Log Action to InfluxDB').first().json.shouldWriteBlockState }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8286f000-d874-433d-a9db-4aa3e7cbfc16",
+      "name": "Is Block Decision?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://<YOUR_WAZUH_SERVER_IP>:8086/api/v2/write?org=wazuh-soc&bucket=blocked_ips&precision=s",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Token <YOUR_INFLUXDB_TOKEN>"
+            },
+            {
+              "name": "Content-Type",
+              "value": "text/plain; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/plain; charset=utf-8",
+        "body": "={{ $json.blockedLineProtocol }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "249fad74-2f2b-4524-be63-13d57928bb1c",
+      "name": "Write Block State",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        288,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "path": "4a34f37e-e5e6-4586-90b9-3c4d832cb8b5",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook - Dashboard",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -5168,
+        1392
+      ],
+      "webhookId": "4a34f37e-e5e6-4586-90b9-3c4d832cb8b5",
+      "id": "01d3443d-c17d-43da-9ba0-ca31ed915f3e"
+    },
+    {
+      "parameters": {
+        "jsCode": "const html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Wazuh SOC Dashboard</title>\n    <style>\n        * { margin: 0; padding: 0; box-sizing: border-box; }\n        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); min-height: 100vh; padding: 20px; }\n        .container { max-width: 1400px; margin: 0 auto; }\n        header { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 15px; padding: 25px; margin-bottom: 30px; }\n        h1 { color: white; font-size: 32px; margin-bottom: 10px; }\n        .status { color: #4ade80; font-size: 14px; display: flex; align-items: center; gap: 8px; }\n        .status-dot { width: 8px; height: 8px; background: #4ade80; border-radius: 50%; animation: pulse 2s infinite; }\n        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }\n        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 30px; }\n        .stat-card { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; color: white; }\n        .stat-label { font-size: 12px; opacity: 0.8; margin-bottom: 8px; }\n        .stat-value { font-size: 28px; font-weight: bold; }\n        .alerts-container { background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; }\n        .refresh-btn { background: rgba(74,222,128,0.2); border: 1px solid #4ade80; color: #4ade80; padding: 8px 16px; border-radius: 8px; cursor: pointer; }\n        .alert { background: rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 4px solid; }\n        .alert.critical { border-left-color: #ef4444; }\n        .alert.high { border-left-color: #f97316; }\n        .alert.medium { border-left-color: #eab308; }\n        .alert.low { border-left-color: #3b82f6; }\n        .alert-title { color: white; font-size: 16px; font-weight: 600; }\n        .alert-meta { display: flex; gap: 15px; font-size: 12px; color: rgba(255,255,255,0.6); margin: 8px 0; flex-wrap: wrap; }\n        .severity-badge { padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; }\n        .severity-badge.critical { background: #ef4444; color: white; }\n        .severity-badge.high { background: #f97316; color: white; }\n        .severity-badge.medium { background: #eab308; color: black; }\n        .severity-badge.low { background: #3b82f6; color: white; }\n        .ai-analysis { background: rgba(147,51,234,0.1); border: 1px solid rgba(147,51,234,0.3); border-radius: 8px; padding: 12px; margin-top: 12px; color: rgba(255,255,255,0.9); font-size: 14px; }\n        .action-badge { display: inline-block; padding: 3px 10px; border-radius: 8px; font-size: 11px; font-weight: 600; margin-left: 8px; }\n        .action-badge.block_ip { background: #ef4444; color: white; }\n        .action-badge.investigate { background: #f97316; color: white; }\n        .action-badge.monitor { background: #6b7280; color: white; }\n        .no-alerts { text-align: center; color: rgba(255,255,255,0.6); padding: 60px; }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <header>\n            <h1>\\uD83D\\uDEE1\\uFE0F Wazuh AI-SOC Dashboard v12.8.2</h1>\n            <div class=\"status\"><div class=\"status-dot\"></div><span>Progressive AI Decision Engine Active — Foundation-Sec-8B-Instruct Q4</span></div>\n        </header>\n        <div class=\"stats\">\n            <div class=\"stat-card\"><div class=\"stat-label\">Total Alerts</div><div class=\"stat-value\" id=\"total-alerts\">0</div></div>\n            <div class=\"stat-card\"><div class=\"stat-label\">Critical</div><div class=\"stat-value\" id=\"critical-count\" style=\"color:#ef4444\">0</div></div>\n            <div class=\"stat-card\"><div class=\"stat-label\">High</div><div class=\"stat-value\" id=\"high-count\" style=\"color:#f97316\">0</div></div>\n            <div class=\"stat-card\"><div class=\"stat-label\">Auto-Blocked</div><div class=\"stat-value\" id=\"blocked-count\" style=\"color:#c084fc\">0</div></div>\n            <div class=\"stat-card\"><div class=\"stat-label\">Last Updated</div><div class=\"stat-value\" id=\"last-update\" style=\"font-size:16px\">--:--</div></div>\n        </div>\n        <div class=\"alerts-container\">\n            <div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;\">\n                <h2 style=\"color:white\">Recent Security Alerts + AI Decisions</h2>\n                <button class=\"refresh-btn\" onclick=\"loadAlerts()\">\\uD83D\\uDD04 Refresh</button>\n            </div>\n            <div id=\"alerts-list\"><div class=\"no-alerts\">Loading alerts...</div></div>\n        </div>\n    </div>\n    <script>\n        function loadAlerts() {\n            fetch('/webhook/get-alerts')\n                .then(r => r.json())\n                .then(data => { displayAlerts(data.alerts || []); updateStats(data.alerts || []); })\n                .catch(() => { document.getElementById('alerts-list').innerHTML = '<div class=\"no-alerts\">Error loading alerts.</div>'; });\n        }\n        function displayAlerts(alerts) {\n            const c = document.getElementById('alerts-list');\n            if (!alerts.length) { c.innerHTML = '<div class=\"no-alerts\">No alerts yet. Waiting for Wazuh events...</div>'; return; }\n            c.innerHTML = alerts.map(a => {\n                const action = a.ai_action || a.decision || 'monitor';\n                return '<div class=\"alert ' + a.severity + '\">' +\n                    '<div style=\"display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;\"><div class=\"alert-title\">' + (a.description || 'Security Alert') + '<span class=\"action-badge ' + action + '\">\\u26A1 ' + action.replace(/_/g,' ') + '</span></div>' +\n                    '<span class=\"severity-badge ' + a.severity + '\">' + a.severity + '</span></div>' +\n                    '<div class=\"alert-meta\"><span>\\uD83D\\uDD50 ' + formatTime(a.timestamp) + '</span><span>\\uD83D\\uDDA5\\uFE0F ' + (a.agent?.name || 'Unknown') + '</span><span>\\uD83D\\uDCCA Level: ' + (a.rule?.level || 'N/A') + '</span><span>\\uD83C\\uDF10 IP: ' + (a.sourceIP || 'N/A') + '</span><span>\\uD83C\\uDFAF Confidence: ' + Math.round((a.ai_confidence || 0) * 100) + '%</span></div>' +\n                    (a.ai_reason ? '<div class=\"ai-analysis\"><span style=\"color:#c084fc;font-weight:600;\">\\uD83E\\uDD16 AI:</span> ' + a.ai_reason + '</div>' : '') +\n                '</div>';\n            }).join('');\n        }\n        function updateStats(alerts) {\n            document.getElementById('total-alerts').textContent = alerts.length;\n            document.getElementById('critical-count').textContent = alerts.filter(a => a.severity === 'critical').length;\n            document.getElementById('high-count').textContent = alerts.filter(a => a.severity === 'high').length;\n            document.getElementById('blocked-count').textContent = alerts.filter(a => a.decision === 'block_ip').length;\n            document.getElementById('last-update').textContent = new Date().toLocaleTimeString();\n        }\n        function formatTime(t) {\n            const d = new Date(t), n = new Date(), diff = Math.floor((n-d)/60000);\n            if (diff < 1) return 'Just now'; if (diff < 60) return diff + 'm ago';\n            if (diff < 1440) return Math.floor(diff/60) + 'h ago'; return d.toLocaleString();\n        }\n        loadAlerts();\n        setInterval(loadAlerts, 5000);\n    </script>\n</body>\n</html>`;\nreturn { json: { html } };"
+      },
+      "name": "Generate Dashboard HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -4960,
+        1392
+      ],
+      "id": "7a8bea28-ba55-483e-b7ca-87b85db34870"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Respond - Dashboard HTML",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -4752,
+        1392
+      ],
+      "id": "3d23a2f1-6d09-47e5-90fa-0727e528c00e"
+    },
+    {
+      "parameters": {
+        "path": "8b90be31-a941-4ef5-b0b4-a638c9740000",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook - Get Alerts",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -5168,
+        1584
+      ],
+      "webhookId": "8b90be31-a941-4ef5-b0b4-a638c9740000",
+      "id": "e38257f3-353a-47fa-9396-ce48a8960a3d"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://<YOUR_WAZUH_SERVER_IP>:8086/api/v2/query?org=wazuh-soc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Token <YOUR_INFLUXDB_TOKEN>"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/vnd.flux"
+            },
+            {
+              "name": "Accept",
+              "value": "application/csv"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "from(bucket: \"alerts\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"alerts\")\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 50)",
+        "options": {}
+      },
+      "name": "Query InfluxDB for Alerts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -4960,
+        1584
+      ],
+      "id": "dc3f61e0-463f-49ee-8b7f-be52429e24b7"
+    },
+    {
+      "parameters": {
+        "jsCode": "const csvData = $input.item.json.data || $input.item.json.body || '';\nlet alerts = [];\n\ntry {\n  const lines = csvData.split('\\n').filter(l => l.trim() && !l.startsWith('#'));\n  if (lines.length > 1) {\n    const headers = lines[0].split(',');\n    for (let i = 1; i < lines.length; i++) {\n      const vals = lines[i].split(',');\n      if (vals.length < 2) continue;\n      const obj = {};\n      headers.forEach((h, idx) => { obj[h.trim()] = vals[idx]?.trim() || ''; });\n      if (obj._time || obj.description) {\n        alerts.push({\n          id: obj._time || Date.now().toString(),\n          timestamp: obj._time || new Date().toISOString(),\n          severity: obj.severity || 'low',\n          description: obj.description || 'Security Alert',\n          sourceIP: obj.source_ip || 'unknown',\n          ai_confidence: parseFloat(obj.confidence) || 0,\n          ai_action: obj.decision || 'monitor',\n          decision: obj.decision || 'monitor',\n          ai_reason: obj.reason || '',\n          rule: { level: parseInt(obj.rule_level) || 0 },\n          agent: { name: obj.agent || 'Unknown' }\n        });\n      }\n    }\n  }\n} catch(e) { alerts = []; }\n\nreturn { json: { alerts, count: alerts.length } };"
+      },
+      "name": "Parse InfluxDB Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -4752,
+        1584
+      ],
+      "id": "68f4982e-a016-4976-97f9-b4517fb28f1d"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "name": "Respond - Alerts JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -4544,
+        1584
+      ],
+      "id": "7e7b39ea-7952-41e6-a41e-13ee6378b6af"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Write telegram_sent lock to InfluxDB BEFORE Telegram fires\n// This prevents duplicate Telegram messages in concurrent executions\n// Also passes through all original AI Decision Engine data unchanged\n\nconst d = $('AI Decision Engine').first().json;\n\nconst cleanTag = v => String(v || 'unknown')\n  .replace(/[,= \\t\\n\\r]/g, '_')\n  .replace(/[^\\x20-\\x7E]/g, '')\n  .substring(0, 64) || 'unknown';\n\nconst ts = Math.floor(Date.now() / 1000);\n\nconst line = [\n  'telegram_sent',\n  ',source_ip=' + cleanTag(d.sourceIP),\n  ',decision=' + cleanTag(d.decision),\n  ',agent=' + cleanTag(d.agent?.name || 'unknown'),\n  ',threat_type=' + cleanTag(d.ai_threat_type),\n  ' sent=1i',\n  ' ' + ts\n].join('');\n\n// Pass through ALL original data so downstream nodes have full context\nreturn [{\n  json: {\n    ...d,\n    telegramSentLineProtocol: line\n  }\n}];"
+      },
+      "id": "f993d6df-2748-48f8-b8be-21a47c96bed4",
+      "name": "Write Telegram Sent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1472,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://<YOUR_WAZUH_SERVER_IP>:8086/api/v2/write?org=wazuh-soc&bucket=alerts&precision=s",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Token <YOUR_INFLUXDB_TOKEN>"
+            },
+            {
+              "name": "Content-Type",
+              "value": "text/plain; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/plain; charset=utf-8",
+        "body": "={{ $json.telegramSentLineProtocol }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 5000
+        }
+      },
+      "id": "4f9ede11-74a0-4f8e-a625-7f0217e9c843",
+      "name": "Write Telegram Sent to InfluxDB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -1264,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('AI Decision Engine').first().json;\nconst agentName = d.agent?.name || 'unknown';\nconst sourceIP  = d.sourceIP || 'unknown';\n\n// Agent name → Tailscale IP mapping (for reference only)\nconst agentIPs = {\n  'winpulkit':       '<AGENT_IP_1>',\n  'lb110-006':       '<AGENT_IP_2>',\n  'linux-labratter': '<AGENT_IP_3>'\n};\n\nconst targetIP = agentIPs[agentName] || null;\n\n// blocker.py ALWAYS runs on wazuh-lab — never on the employee machine\nconst BLOCKER_URL = 'http://<YOUR_WAZUH_SERVER_IP>:9999';\n\nlet isolateResults = [];\nif (targetIP) {\n  try {\n    const response = await this.helpers.httpRequest({\n      method: 'POST',\n      url: BLOCKER_URL,\n      body: { action: 'isolate', agent: agentName, ip: targetIP },\n      json: true\n    });\n    isolateResults.push({ host: targetIP, result: response });\n  } catch(e) {\n    isolateResults.push({ host: targetIP, error: e.message });\n  }\n} else {\n  isolateResults.push({ host: 'unknown', error: `No IP mapping for agent: ${agentName}` });\n}\n\nreturn [{ json: {\n  ...d,\n  isolate_results: isolateResults,\n  isolation_target_agent: agentName,\n  isolation_target_ip: targetIP,\n  isolation_triggered_by: sourceIP,\n  isolation_timestamp: new Date().toISOString()\n}}];"
+      },
+      "id": "05cc6cc8-664f-4c77-b761-1c2a70c318ab",
+      "name": "Isolate Host Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1264,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.item.json;\nconst cleanTag = v => String(v||'unknown').replace(/[,= \\t\\n\\r]/g,'_').substring(0,64)||'unknown';\nconst ts = Math.floor(Date.now()/1000);\nconst line = 'isolated_hosts'\n  + ',agent='         + cleanTag(d.isolation_target_agent)\n  + ',target_ip='     + cleanTag(d.isolation_target_ip||'unknown')\n  + ',triggered_by='  + cleanTag(d.isolation_triggered_by)\n  + ',decision=isolate_host'\n  + ' isolated=1i'\n  + ' ' + ts;\nreturn [{ json: { ...d, isolationLineProtocol: line } }];"
+      },
+      "id": "2be89dea-a9a2-4ecd-91d2-05616a30f589",
+      "name": "Build Isolation Line Protocol",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1056,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://<YOUR_WAZUH_SERVER_IP>:8086/api/v2/write?org=wazuh-soc&bucket=blocked_ips&precision=s",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Token <YOUR_INFLUXDB_TOKEN>"
+            },
+            {
+              "name": "Content-Type",
+              "value": "text/plain; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/plain; charset=utf-8",
+        "body": "={{ $json.isolationLineProtocol }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 5000
+        }
+      },
+      "id": "d70ba11d-e41e-48f5-95ef-850d2473cac9",
+      "name": "Write Isolation to InfluxDB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -848,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"chat_id\":<YOUR_TELEGRAM_CHAT_ID>,\"parse_mode\":\"HTML\",\"text\":\"\\ud83d\\udd12 <b>WAZUH SOC \\u2014 HOST ISOLATED</b>\\n\\n<b>Agent:</b> {{ $('Isolate Host Action').first().json.isolation_target_agent || 'unknown' }}\\n<b>Triggered by IP:</b> {{ $('Isolate Host Action').first().json.isolation_triggered_by || 'unknown' }}\\n<b>Attack Type:</b> {{ $('AI Decision Engine').first().json.ai_threat_type || 'unknown' }}\\n<b>MITRE:</b> {{ $('AI Decision Engine').first().json.ai_mitre_id || 'unknown' }}\\n<b>Confidence:</b> {{ $('AI Decision Engine').first().json.ai_confidence || 0 }}\\n<b>Reason:</b> {{ $('AI Decision Engine').first().json.executionReason || 'N/A' }}\\n<b>Isolation Result:</b> {{ $('Isolate Host Action').first().json.isolate_results[0].result ? $('Isolate Host Action').first().json.isolate_results[0].result.status : $('Isolate Host Action').first().json.isolate_results[0].error }}\\n<b>Target Host:</b> {{ $('Isolate Host Action').first().json.isolation_target_ip || 'unknown' }}\"}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "91b8c5a3-a69b-4632-854c-055fcf1b3ce3",
+      "name": "Telegram Isolation Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -640,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build Ollama prompt — v12.9.11\nconst d = $input.item.json;\n\nconst alertDesc    = d.alert?.rule?.description || d.rule?.description || d.description || 'Security alert';\nconst ruleLevel    = d.alert?.rule?.level        || d.rule?.level        || 0;\nconst ruleId       = d.alert?.rule?.id           || d.rule?.id           || 'unknown';\nconst sourceIP     = d.sourceIP                  || 'unknown';\nconst agentName    = d.alert?.agent?.name        || d.agent?.name        || 'unknown';\nconst severity     = d.alert?.severity           || d.severity           || 'unknown';\nconst history24h   = d.ip_history_count          || 0;\nconst velocity5m   = d.ip_velocity_5m            || 0;\nconst lastDecision = d.ip_last_decision          || 'none';\n\nconst mitreIds     = d.alert?.rule?.mitre?.id    || d.rule?.mitre?.id    || [];\nconst ruleGroups   = d.alert?.rule?.groups       || d.rule?.groups       || [];\nconst filePath     = d.alert?.syscheck?.path     || d.syscheck?.path     || '';\n\nconst dstUser     = d.alert?.data?.dstuser       || '';\nconst srcUser     = d.alert?.data?.srcuser       || '';\nconst programName = d.alert?.data?.program_name  || '';\nconst dstIp       = d.alert?.data?.dstip         || '';\nconst protocol    = d.alert?.data?.protocol      || '';\n\nconst extraLines = [\n  dstUser     ? `Target User: ${dstUser}`       : '',\n  srcUser     ? `Source User: ${srcUser}`       : '',\n  programName ? `Process: ${programName}`       : '',\n  dstIp       ? `Destination IP: ${dstIp}`     : '',\n  protocol    ? `Protocol: ${protocol}`         : '',\n  filePath    ? `Affected File: ${filePath}`    : '',\n  mitreIds.length ? `MITRE ATT&CK: ${mitreIds.join(', ')}` : '',\n  ruleGroups.length ? `Alert Groups: ${ruleGroups.join(', ')}` : '',\n].filter(Boolean);\n\nconst userContent = [\n  `Alert: ${alertDesc}`,\n  `Rule Level: ${ruleLevel}/15`,\n  `Rule ID: ${ruleId}`,\n  `Source IP: ${sourceIP}`,\n  `Agent (Host): ${agentName}`,\n  `Severity: ${severity}`,\n  `Previous alerts from this IP in 24h: ${history24h}`,\n  `Alert velocity last 5min: ${velocity5m}`,\n  `Last SOC decision for this IP: ${lastDecision}`,\n  ...extraLines\n].join('\\n');\n\nconst systemPrompt = `You are a SOC Analyst API for an enterprise network protecting 100-500 employees. Analyze security alerts and respond with JSON only.\n\nYou handle TWO fundamentally different threat classes. Identify which class this alert belongs to FIRST:\n\nCLASS A — NETWORK THREATS (brute force, port scans, login failures):\nThese have a source IP, occur over the network, and scale with repetition.\nReasoning for Class A:\n1. Count last 24h: 0-2 = isolated, 3-9 = pattern, 10+ = confirmed\n2. Velocity last 5min: 0-2 = human, 3-9 = suspicious, 10+ = automated\n3. Last decision: none = cautious, monitor = raise, investigate = escalate, block_ip = serious\n4. Action rules:\n   - count 0-2 AND velocity 0-2: monitor\n   - count 3-9 OR velocity 3-9: investigate\n   - count 10+ OR velocity 10+: block_ip\n5. Confidence scales with count: 0-2 = max 0.5, 3-9 = 0.5-0.75, 10+ = 0.75-0.95\n\nCLASS B — HOST COMPROMISE THREATS (ransomware, malware, rootkits, FIM anomalies):\nThese target the host filesystem or processes directly. Source IP is irrelevant — the damage is already on the machine. Count and velocity of IP history do NOT apply.\nIndicators of Class B:\n- MITRE techniques: T1486 (ransomware), T1055 (injection), T1014 (rootkit), T1485 (destruction), T1059 (execution), T1036 (masquerading)\n- Alert groups containing: ransomware, malware, rootkit, fim\n- Rule level 12 or above with file integrity monitoring context\n- Source IP is unknown or localhost\n- Alert describes file encryption, mass deletion, or process injection\n\nReasoning for Class B:\n1. Is the host already compromised or actively being compromised? Yes = isolate_host immediately.\n2. Ransomware encrypting files = host must be isolated before it spreads. Do not wait for IP thresholds.\n3. Unknown source IP in a host compromise context means the attacker is already inside — blocking an IP does nothing.\n4. isolate_host is the ONLY valid response to active ransomware, malware execution, or rootkit detection.\n5. block_ip is INVALID for Class B — there is no IP to block that would stop the damage.\n\nRESPONSE RULES:\n- If Class B indicators present: action MUST be isolate_host, confidence 0.85-0.95\n- Never return block_ip for a ransomware or FIM-based alert\n- Never return monitor for a level 12 alert with ransomware indicators\n- Reason must explain which class you identified and why\n\nRESPOND WITH THIS JSON STRUCTURE ONLY — no markdown, no backticks, no extra text:\n{\"threat_type\": \"snake_case_name\", \"severity\": integer 1-10, \"mitre_id\": \"T-code\", \"confidence\": float 0.0-1.0, \"action\": \"monitor or investigate or block_ip or isolate_host or revoke_access\", \"reason\": \"two sentences identifying threat class and justifying action\"}`;\n\nconst ollamaPayload = {\n  model: \"hf.co/mradermacher/Foundation-Sec-8B-Instruct-GGUF:Q4_K_M\",\n  messages: [\n    { role: \"system\", content: systemPrompt },\n    { role: \"user\",   content: userContent  }\n  ],\n  stream: false,\n  options: { num_ctx: 4096, num_predict: 300, temperature: 0 }\n};\n\nreturn [{\n  json: {\n    ...d,\n    ollamaPayload:  ollamaPayload,\n    resolvedPrompt: userContent\n  }\n}];"
+      },
+      "id": "61fa6ee6-a49e-48bd-a5d4-667143e24eb3",
+      "name": "Build Ollama Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3344,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verify Block Result — v12.9.10 final\n// n8n httpRequest returns blocker.py response wrapped in: { data: '{\"status\":\"blocked\",...}' }\n// So we parse $input.item.json.data first, then read .status\n\nconst raw = $input.item.json;\n\nlet result = {};\ntry {\n  if (raw.data && typeof raw.data === 'string') {\n    result = JSON.parse(raw.data);          // main path: data is a JSON string\n  } else if (raw.data && typeof raw.data === 'object') {\n    result = raw.data;                      // fallback: data is already an object\n  } else if (raw.status) {\n    result = raw;                           // fallback: status at top level\n  }\n} catch(e) {\n  result = { status: 'parse_error', error: e.message };\n}\n\nconst status         = result.status || '';\nconst blocked        = status === 'blocked';\nconst alreadyBlocked = status === 'already_blocked';\nconst blockSuccess   = blocked || alreadyBlocked;\n\nreturn [{\n  json: {\n    ...$('AI Decision Engine').first().json,\n    block_success:         blockSuccess,\n    block_status:          blockSuccess ? status : 'FAILED',\n    block_is_fresh:        blocked,\n    block_already_existed: alreadyBlocked,\n    block_error:           blockSuccess ? '' : (result.error || status || 'no response from blocker.py'),\n    block_responding_host: 'http://172.19.0.1:9999',\n    block_raw_response:    result\n  }\n}];\n"
+      },
+      "id": "6c47650d-8beb-4766-ba54-4fded8c02998",
+      "name": "Verify Block Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1056,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "block-success-check",
+              "leftValue": "={{ $json.block_success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ae9f23c6-0d93-498e-86bd-8e7348ce965b",
+      "name": "Block Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -848,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/sendMessage",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\"chat_id\":<YOUR_TELEGRAM_CHAT_ID>,\"parse_mode\":\"HTML\",\"text\":\"✅ <b>WAZUH SOC — IP BLOCKED (CONFIRMED)</b>\\n\\n<b>IP:</b> {{ $('AI Decision Engine').first().json.sourceIP }}\\n<b>Status:</b> {{ $json.block_status }}\\n<b>Agent:</b> {{ $('AI Decision Engine').first().json.agent?.name || 'unknown' }}\\n<b>Attack Type:</b> {{ $('AI Decision Engine').first().json.ai_threat_type }}\\n<b>MITRE:</b> {{ $('AI Decision Engine').first().json.ai_mitre_id }}\\n<b>Effective Count:</b> {{ $('AI Decision Engine').first().json.effectiveCount }}\\n<b>Blocker Host:</b> {{ $json.block_responding_host || '172.19.0.1' }}\\n<b>Reason:</b> {{ $('AI Decision Engine').first().json.executionReason }}\"}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "4d570582-d9d3-4205-972b-e1097f2cb048",
+      "name": "Telegram Block Confirmed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -640,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/sendMessage",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\"chat_id\":<YOUR_TELEGRAM_CHAT_ID>,\"parse_mode\":\"HTML\",\"text\":\"🚨 <b>WAZUH SOC — BLOCK FAILED — MANUAL ACTION REQUIRED</b>\\n\\n<b>IP:</b> {{ $('AI Decision Engine').first().json.sourceIP }}\\n<b>Error:</b> {{ $json.block_error || 'blocker.py unreachable' }}\\n<b>Agent:</b> {{ $('AI Decision Engine').first().json.agent?.name || 'unknown' }}\\n<b>Attack Type:</b> {{ $('AI Decision Engine').first().json.ai_threat_type }}\\n<b>Action Required:</b> SSH into wazuh-lab and run: sudo iptables -I INPUT 1 -s {{ $('AI Decision Engine').first().json.sourceIP }} -j DROP\"}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "872f070e-4746-430a-9f25-9fcfff465924",
+      "name": "Telegram Block Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -640,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "fim-check-001",
+              "leftValue": "={{ \n  ['550','553','554','555','556','557','558'].includes(String($json.body?.rule?.id || ''))\n  &&\n  !($json.body?.rule?.groups || []).includes('ransomware')\n}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a7dc72c2-cb65-4c41-81c1-a9a583fb2306",
+      "name": "Is FIM Alert?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -4192,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/sendMessage",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\"chat_id\":<YOUR_TELEGRAM_CHAT_ID>,\"parse_mode\":\"HTML\",\"text\":\"🔔 <b>WAZUH SOC — FILE INTEGRITY ALERT</b>\\n\\n<b>File:</b> {{ $json.syscheck?.path || 'unknown path' }}\\n<b>Event:</b> {{ $json.syscheck?.event || 'modified' }}\\n<b>Agent:</b> {{ $json.agent?.name || 'unknown' }}\\n<b>Rule:</b> {{ $json.rule?.id }} — {{ $json.rule?.description }}\\n<b>Severity:</b> {{ $json.rule?.level }}/15\\n<b>Time:</b> {{ $json.timestamp }}\\n\\n⚠️ <b>Action:</b> Verify this change was authorised. If unexpected, investigate immediately.\"}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "1cb95f05-c360-49eb-a2a5-67b8a500da12",
+      "name": "Telegram FIM Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3744,
+        1184
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Isolate Host Action').first().json;\nconst agentName = d.isolation_target_agent || d.agent?.name || 'unknown';\n\n// 📖 THE DIGITAL PHONEBOOK\n// Match the Wazuh agent name to the employee's private Telegram ID.\n// You can add as many computers and employees here as you want!\nconst phonebook = {\n  'wazuh-lab': '<YOUR_TELEGRAM_CHAT_ID>', // Your ID\n  'winpulkit': '<EMPLOYEE_TELEGRAM_CHAT_ID>', // Actual Id \n  'lb110-006': '1122334455' , // Example placeholder\n  'linux-labratter': '<YOUR_TELEGRAM_CHAT_ID>' // added this on 04/04/26\n};\n\n// Look up the ID. If we don't have this employee in our phonebook, label it 'not_found'\nconst employeeTelegramId = phonebook[agentName] || 'not_found';\n\nreturn [{\n  json: {\n    ...d,\n    employee_chat_id: employeeTelegramId\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        96
+      ],
+      "id": "f7107cd3-2ce1-4c1b-a895-9651b931e476",
+      "name": "Digital Phonebook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cb7611ae-36db-4cb6-be4d-39b285f0c542",
+              "leftValue": "={{ $json.employee_chat_id }}",
+              "rightValue": "not_found",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -208,
+        96
+      ],
+      "id": "5b122a7b-93a1-49cf-91dc-482d6f4bb936",
+      "name": "Employee Known ?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $json.employee_chat_id }}\",\n  \"parse_mode\": \"HTML\",\n  \"text\": \"⚠️ <b>SECURITY ALERT FROM IT</b>\\n\\nHello, we have detected a critical security issue on your computer (<b>{{ $json.isolation_target_agent }}</b>).\\n\\nTo keep the company network safe, we have temporarily paused your internet and network access. \\n\\n<b>What you need to do:</b>\\n1. Do not panic.\\n2. Save any offline work you are doing right now.\\n3. Do not restart your computer.\\n4. Wait for the IT/Security team to contact you directly.\\n\\nThank you for your cooperation!\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8d8c162f-7fe0-4fc7-80bc-e8646c9a7add",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "792d39cf-e1a0-40b2-b197-d17d57de845e",
+              "leftValue": "={{ $json.has_start }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        384
+      ],
+      "id": "d1b86ac9-bf02-4ade-b92f-6a15e27cb554",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $json.chat_id }}\",\n  \"parse_mode\": \"HTML\",\n  \"text\": \"🛡️ <b>SOC SECURITY ONBOARDING</b>\\n\\nWelcome, <b>{{ $json.first_name }}</b>. To protect your laptop, please provide your Registration ID to the IT Administrator.\\n\\nYour Registration ID is: <code>{{ $json.chat_id }}</code>\\n\\n<i>Copy this number and send it to your SOC Analyst. IGNORE THIS MESSAGE IF YOU HAVE ALREADY DONE THIS PROCESS.</i>\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        672,
+        176
+      ],
+      "id": "a28d7675-05dd-43b6-9b72-8b533f7ab541",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"<YOUR_TELEGRAM_CHAT_ID>\",\n  \"parse_mode\": \"HTML\",\n  \"text\": \"🚨 <b>SOC ALERT: COMMUNICATION GAP</b>\\n\\nHost <b>{{ $json.agent.name }}</b> was isolated, but the employee is <b>NOT REGISTERED</b> in the phonebook.\\n\\n<b>Next Step:</b> Please find the employee, get their Telegram ID, and add them to the n8n Phonebook node.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -16,
+        176
+      ],
+      "id": "61ee1ec4-0812-478e-b511-fd91b7131172",
+      "name": "Notify Analyst: Missing ID."
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 20
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -208,
+        384
+      ],
+      "id": "4ead1d99-a12b-487f-8f51-12df67d5acea",
+      "name": "Poll Schedule"
+    },
+    {
+      "parameters": {
+        "url": "https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/getUpdates",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "10"
+            },
+            {
+              "name": "timeout",
+              "value": "0"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        384
+      ],
+      "id": "7fdd39eb-694d-4fd7-a14a-65ff9e51db7d",
+      "name": "Get Telegram Updates"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Parse Telegram getUpdates response and extract /start messages\nconst response = $input.item.json;\nconst updates = response.result || [];\n\nconst startMessages = [];\nlet maxUpdateId = null;\n\nfor (const update of updates) {\n  if (maxUpdateId === null || update.update_id > maxUpdateId) {\n    maxUpdateId = update.update_id;\n  }\n  const msg = update.message;\n  if (msg && msg.text === '/start') {\n    startMessages.push({\n      json: {\n        has_start: true,\n        update_id: update.update_id,\n        max_update_id: maxUpdateId,\n        chat_id: String(msg.chat.id),\n        first_name: msg.from?.first_name || 'User',\n        username: msg.from?.username || '',\n        text: msg.text\n      }\n    });\n  }\n}\n\n// No /start messages — return sentinel so flow terminates cleanly\nif (startMessages.length === 0) {\n  return [{ json: { has_start: false, max_update_id: maxUpdateId, chat_id: null } }];\n}\n\n// Attach max_update_id to all items for acknowledge step\nreturn startMessages.map(item => ({\n  json: { ...item.json, max_update_id: maxUpdateId }\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        384
+      ],
+      "id": "c531ec69-55b1-4795-ac3d-7a917a74e485",
+      "name": "Process Updates"
+    },
+    {
+      "parameters": {
+        "url": "https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/getUpdates",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "offset",
+              "value": "={{ $node[\"Process Updates\"].json.max_update_id + 1 }}"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            },
+            {
+              "name": "timeout",
+              "value": "0"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 5000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        944,
+        400
+      ],
+      "id": "321d21f4-04b9-4057-a78a-0f811fc9777d",
+      "name": "Acknowledge Updates"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook - Receive Alerts": {
+      "main": [
+        [
+          {
+            "node": "Process Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Alert": {
+      "main": [
+        [
+          {
+            "node": "Extract IP Address",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract IP Address": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Query IP History",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalize Localhost Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Localhost Data": {
+      "main": [
+        [
+          {
+            "node": "Is FIM Alert?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query IP History": {
+      "main": [
+        [
+          {
+            "node": "Parse IP History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse IP History": {
+      "main": [
+        [
+          {
+            "node": "Query 5min Velocity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query 5min Velocity": {
+      "main": [
+        [
+          {
+            "node": "Parse 5min Velocity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse 5min Velocity": {
+      "main": [
+        [
+          {
+            "node": "Query Last Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Last Decision": {
+      "main": [
+        [
+          {
+            "node": "Parse Last Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Last Decision": {
+      "main": [
+        [
+          {
+            "node": "Build Ollama Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama AI Analysis": {
+      "main": [
+        [
+          {
+            "node": "Combine Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Data": {
+      "main": [
+        [
+          {
+            "node": "AI Decision Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Decision Engine": {
+      "main": [
+        [
+          {
+            "node": "Build Line Protocol",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Should Auto Execute?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Line Protocol": {
+      "main": [
+        [
+          {
+            "node": "Write to InfluxDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write to InfluxDB": {
+      "main": [
+        [
+          {
+            "node": "Save to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to File": {
+      "main": [
+        [
+          {
+            "node": "Respond - Alert Saved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Auto Execute?": {
+      "main": [
+        [
+          {
+            "node": "Action Router",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Action to InfluxDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Action Router": {
+      "main": [
+        [
+          {
+            "node": "Query Recent Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Isolate Host Action",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Recent Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Recent Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Recent Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Action to InfluxDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Recent Telegram": {
+      "main": [
+        [
+          {
+            "node": "Parse Telegram Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Telegram Dedup": {
+      "main": [
+        [
+          {
+            "node": "Skip If Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip If Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Write Telegram Sent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Action to InfluxDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Notify": {
+      "main": [
+        [
+          {
+            "node": "Route After Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route After Telegram": {
+      "main": [
+        [
+          {
+            "node": "Block IP via Local Blocker",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Action to InfluxDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Block IP via Local Blocker": {
+      "main": [
+        [
+          {
+            "node": "Verify Block Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Action to InfluxDB": {
+      "main": [
+        [
+          {
+            "node": "Write Action to InfluxDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Action to InfluxDB": {
+      "main": [
+        [
+          {
+            "node": "Is Block Decision?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Block Decision?": {
+      "main": [
+        [
+          {
+            "node": "Write Block State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Dashboard": {
+      "main": [
+        [
+          {
+            "node": "Generate Dashboard HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Dashboard HTML": {
+      "main": [
+        [
+          {
+            "node": "Respond - Dashboard HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Get Alerts": {
+      "main": [
+        [
+          {
+            "node": "Query InfluxDB for Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query InfluxDB for Alerts": {
+      "main": [
+        [
+          {
+            "node": "Parse InfluxDB Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse InfluxDB Response": {
+      "main": [
+        [
+          {
+            "node": "Respond - Alerts JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Telegram Sent": {
+      "main": [
+        [
+          {
+            "node": "Write Telegram Sent to InfluxDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Telegram Sent to InfluxDB": {
+      "main": [
+        [
+          {
+            "node": "Telegram Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Isolate Host Action": {
+      "main": [
+        [
+          {
+            "node": "Build Isolation Line Protocol",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Isolation Line Protocol": {
+      "main": [
+        [
+          {
+            "node": "Write Isolation to InfluxDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Isolation to InfluxDB": {
+      "main": [
+        [
+          {
+            "node": "Telegram Isolation Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Isolation Alert": {
+      "main": [
+        [
+          {
+            "node": "Digital Phonebook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Ollama Prompt": {
+      "main": [
+        [
+          {
+            "node": "Ollama AI Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Block Result": {
+      "main": [
+        [
+          {
+            "node": "Block Succeeded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Block Succeeded?": {
+      "main": [
+        [
+          {
+            "node": "Telegram Block Confirmed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram Block Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Block Confirmed": {
+      "main": [
+        [
+          {
+            "node": "Log Action to InfluxDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Block Failed": {
+      "main": [
+        [
+          {
+            "node": "Log Action to InfluxDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is FIM Alert?": {
+      "main": [
+        [
+          {
+            "node": "Telegram FIM Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query IP History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram FIM Alert": {
+      "main": [
+        [
+          {
+            "node": "Write to InfluxDB",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Action Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Digital Phonebook": {
+      "main": [
+        [
+          {
+            "node": "Employee Known ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Employee Known ?": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Analyst: Missing ID.",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Acknowledge Updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll Schedule": {
+      "main": [
+        [
+          {
+            "node": "Get Telegram Updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Telegram Updates": {
+      "main": [
+        [
+          {
+            "node": "Process Updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Updates": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge Updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "b4824881-fb49-46bd-85bd-d61db05a6011",
+  "meta": {
+    "instanceId": "72743a9ea039ea8e34ecb1b8e51d96f1192ce3af3b809af7d47eb6b8a0e80fa1"
+  },
+  "id": "goeq7wmu8gg2vV7MZxZ4t",
+  "tags": []
+}
