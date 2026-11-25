@@ -1,0 +1,40 @@
+# ============================================================
+# AI-Driven Cyber Threat Detection — .gitignore
+# NEVER let these files reach GitHub
+# ============================================================
+
+# Real environment file with actual secrets
+.env
+
+# SSL certificates and private keys
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+wazuh_indexer_ssl_certs/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor folders
+.vscode/
+.idea/
+
+# Logs
+*.log
+logs/
+
+# Backup files
+*.backup
+*.bak
+
+# Wazuh agent keys (instance-specific, never share)
+client.keys

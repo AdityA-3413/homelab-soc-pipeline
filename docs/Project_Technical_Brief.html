@@ -1,0 +1,1004 @@
+<!--
+  Project Technical Brief — AI-Powered Security Platform
+  Author: Aditya Suresh Acharya
+  © 2026 Aditya Suresh Acharya. All rights reserved unless otherwise licensed.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="author" content="Aditya Suresh Acharya">
+<title>Project Technical Brief — AI-Powered Security Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0d1117;--bg2:#161b22;--bg3:#1c2230;
+  --border:rgba(48,60,80,0.8);--teal:#38bda9;--green:#3fb950;
+  --orange:#f0883e;--red:#f85149;--purple:#a371f7;--yellow:#e3b341;
+  --blue:#58a6ff;
+  --text:#c9d1d9;--muted:#8b949e;--muted2:#484f58;
+  --mono:'JetBrains Mono',monospace;--head:'Syne',sans-serif;--body:'Inter',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:var(--body);background:var(--bg);color:var(--text);line-height:1.7;overflow-x:hidden;}
+
+#prog{position:fixed;top:0;left:0;height:2px;z-index:9999;background:linear-gradient(90deg,var(--orange),var(--red));width:0%;transition:width 0.1s;}
+
+#sidebar{position:fixed;left:0;top:0;height:100vh;width:230px;background:#0d1117;border-right:1px solid var(--border);z-index:900;display:flex;flex-direction:column;padding:24px 0;overflow-y:auto;}
+.sb-logo{font-family:var(--head);font-size:0.72em;font-weight:800;color:var(--orange);padding:0 16px 18px;letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.sb-sub{font-size:0.58em;color:var(--muted);font-family:var(--mono);display:block;margin-top:3px;letter-spacing:1px;}
+.sb-label{font-size:0.58em;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);padding:8px 16px 4px;}
+.sb-link{display:flex;align-items:center;gap:8px;padding:7px 16px;font-size:0.76em;color:var(--muted);text-decoration:none;border-left:2px solid transparent;transition:all 0.2s;cursor:pointer;}
+.sb-link:hover,.sb-link.active{color:var(--orange);border-left-color:var(--orange);background:rgba(240,136,62,0.06);}
+
+#toolbar{position:fixed;top:14px;right:16px;z-index:999;display:flex;gap:6px;}
+.tbtn{background:#161b22;border:1px solid var(--border);border-radius:6px;padding:5px 13px;color:var(--teal);cursor:pointer;font-size:0.72em;transition:all 0.2s;}
+.tbtn:hover{border-color:var(--teal);}
+
+#backtop{position:fixed;bottom:22px;right:22px;z-index:999;width:36px;height:36px;border-radius:6px;background:rgba(240,136,62,0.1);border:1px solid var(--orange);color:var(--orange);cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:all 0.3s;}
+#backtop.show{opacity:1;pointer-events:auto;}
+
+.main{margin-left:230px;padding:0 48px 80px;max-width:1100px;position:relative;z-index:1;}
+
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:48px;}
+.hero-tag{font-family:var(--mono);font-size:0.7em;color:var(--orange);border:1px solid rgba(240,136,62,0.3);padding:4px 12px;border-radius:4px;display:inline-block;margin-bottom:16px;letter-spacing:1px;background:rgba(240,136,62,0.05);}
+.hero h1{font-family:var(--head);font-size:2.6em;font-weight:800;color:#e6edf3;line-height:1.1;margin-bottom:12px;}
+.hero h1 span{color:var(--orange);}
+.hero-sub{font-size:0.92em;color:var(--muted);max-width:680px;line-height:1.8;margin-bottom:20px;}
+.hero-stats{display:flex;gap:24px;flex-wrap:wrap;}
+.hstat{text-align:center;}
+.hstat-val{font-family:var(--head);font-size:1.8em;font-weight:800;}
+.hstat-label{font-size:0.72em;color:var(--muted);font-family:var(--mono);}
+
+.section{margin-bottom:60px;scroll-margin-top:30px;}
+.sec-header{display:flex;align-items:center;gap:12px;margin-bottom:22px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.sec-num{font-family:var(--mono);font-size:0.7em;font-weight:600;color:var(--orange);background:rgba(240,136,62,0.08);border:1px solid rgba(240,136,62,0.25);padding:3px 10px;border-radius:4px;}
+.sec-header h2{font-family:var(--head);font-size:1.4em;font-weight:700;color:#e6edf3;}
+
+p{color:var(--text);margin-bottom:12px;font-size:0.9em;}
+
+/* COMPONENT CARDS */
+.comp-grid{display:flex;flex-direction:column;gap:12px;}
+.comp-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color 0.2s;}
+.comp-card:hover{border-color:rgba(240,136,62,0.3);}
+.cc-header{display:flex;align-items:center;gap:0;cursor:pointer;}
+.cc-bar{width:6px;align-self:stretch;flex-shrink:0;}
+.cc-bar.teal{background:var(--teal);}
+.cc-bar.orange{background:var(--orange);}
+.cc-bar.purple{background:var(--purple);}
+.cc-bar.blue{background:var(--blue);}
+.cc-bar.green{background:var(--green);}
+.cc-bar.yellow{background:var(--yellow);}
+.cc-bar.red{background:var(--red);}
+.cc-main{display:flex;align-items:center;gap:14px;padding:14px 18px;flex:1;}
+.cc-num{font-family:var(--mono);font-size:0.68em;color:var(--muted2);flex-shrink:0;width:28px;}
+.cc-icon{font-size:1.3em;flex-shrink:0;}
+.cc-title{font-family:var(--head);font-size:0.92em;font-weight:700;color:#e6edf3;flex:1;}
+.cc-badge{font-family:var(--mono);font-size:0.64em;padding:3px 9px;border-radius:4px;font-weight:600;white-space:nowrap;flex-shrink:0;}
+.cb-teal{background:rgba(56,189,170,0.12);border:1px solid rgba(56,189,170,0.3);color:var(--teal);}
+.cb-orange{background:rgba(240,136,62,0.12);border:1px solid rgba(240,136,62,0.3);color:var(--orange);}
+.cb-purple{background:rgba(163,113,247,0.12);border:1px solid rgba(163,113,247,0.3);color:var(--purple);}
+.cb-blue{background:rgba(88,166,255,0.12);border:1px solid rgba(88,166,255,0.3);color:var(--blue);}
+.cb-green{background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.3);color:var(--green);}
+.cb-yellow{background:rgba(227,179,65,0.12);border:1px solid rgba(227,179,65,0.3);color:var(--yellow);}
+.cb-red{background:rgba(248,81,73,0.12);border:1px solid rgba(248,81,73,0.3);color:var(--red);}
+.cc-chevron{color:var(--muted2);font-size:0.8em;padding-right:16px;transition:transform 0.2s;}
+.cc-chevron.open{transform:rotate(90deg);}
+
+.cc-body{display:none;padding:0 18px 18px 18px;border-top:1px solid var(--border);}
+.cc-body.show{display:block;}
+.cc-body-inner{padding-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.cc-section{font-size:0.82em;}
+.cc-section-title{font-family:var(--mono);font-size:0.68em;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);margin-bottom:6px;}
+.cc-section-body{color:var(--text);line-height:1.7;font-size:0.97em;}
+.cc-section-body li{margin-left:14px;margin-bottom:3px;}
+.cc-note{background:rgba(56,189,170,0.06);border:1px solid rgba(56,189,170,0.2);border-radius:6px;padding:10px 14px;margin-top:12px;font-size:0.8em;color:var(--muted);grid-column:1/-1;}
+.cc-note strong{color:var(--teal);}
+.cc-warn{background:rgba(240,136,62,0.06);border:1px solid rgba(240,136,62,0.2);border-radius:6px;padding:10px 14px;margin-top:12px;font-size:0.8em;color:var(--muted);grid-column:1/-1;}
+.cc-warn strong{color:var(--orange);}
+
+/* TABLE */
+.os-table{width:100%;border-collapse:collapse;font-size:0.82em;margin-bottom:24px;}
+.os-table th{font-family:var(--mono);font-size:0.68em;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 14px;border-bottom:1px solid var(--border);text-align:left;background:rgba(240,136,62,0.03);}
+.os-table td{padding:10px 14px;border-bottom:1px solid rgba(48,60,80,0.5);vertical-align:middle;}
+.os-table tr:last-child td{border-bottom:none;}
+.os-table tr:hover td{background:rgba(240,136,62,0.02);}
+.os-name{font-weight:600;color:#e6edf3;font-family:var(--mono);font-size:0.9em;}
+.oc-yes{color:var(--green);font-family:var(--mono);font-size:0.82em;}
+.oc-no{color:var(--red);font-family:var(--mono);font-size:0.82em;}
+.oc-custom{color:var(--teal);font-family:var(--mono);font-size:0.82em;}
+.oc-future{color:var(--purple);font-family:var(--mono);font-size:0.82em;}
+
+/* PANEL */
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin-bottom:16px;}
+.panel-title{font-family:var(--mono);font-size:0.7em;font-weight:600;color:var(--teal);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+
+/* OBJECTIVE CARDS */
+.obj-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.obj-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px 20px;}
+.obj-num{font-family:var(--mono);font-size:0.65em;color:var(--orange);margin-bottom:6px;letter-spacing:1px;}
+.obj-title{font-family:var(--head);font-size:0.9em;font-weight:700;color:#e6edf3;margin-bottom:6px;}
+.obj-desc{font-size:0.8em;color:var(--muted);line-height:1.6;}
+
+/* ATTACK TABLE */
+.atk-row{display:flex;gap:16px;align-items:flex-start;padding:14px 0;border-bottom:1px solid rgba(48,60,80,0.5);}
+.atk-row:last-child{border-bottom:none;}
+.atk-badge{font-family:var(--mono);font-size:0.68em;padding:4px 10px;border-radius:4px;flex-shrink:0;width:120px;text-align:center;}
+.ab-brute{background:rgba(248,81,73,0.1);color:var(--red);border:1px solid rgba(248,81,73,0.3);}
+.ab-scan{background:rgba(227,179,65,0.1);color:var(--yellow);border:1px solid rgba(227,179,65,0.3);}
+.ab-fim{background:rgba(88,166,255,0.1);color:var(--blue);border:1px solid rgba(88,166,255,0.3);}
+.ab-ransomware{background:rgba(163,113,247,0.1);color:var(--purple);border:1px solid rgba(163,113,247,0.3);}
+.atk-content{flex:1;}
+.atk-title{font-weight:600;color:#e6edf3;margin-bottom:4px;font-size:0.9em;}
+.atk-detail{font-size:0.8em;color:var(--muted);line-height:1.6;}
+.atk-response{font-family:var(--mono);font-size:0.72em;color:var(--green);margin-top:4px;}
+
+/* FLOW */
+.flow-container{display:flex;align-items:center;flex-wrap:wrap;gap:0;margin:20px 0;}
+.flow-step{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px 16px;font-size:0.8em;font-family:var(--mono);color:var(--text);white-space:nowrap;}
+.flow-arrow{color:var(--orange);font-size:1.2em;padding:0 6px;}
+
+/* HARDWARE CARDS */
+.hw-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+.hw-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:20px;}
+.hw-card-title{font-family:var(--head);font-size:0.85em;font-weight:700;color:var(--orange);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.hw-row{display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid rgba(48,60,80,0.4);font-size:0.8em;gap:12px;}
+.hw-row:last-child{border-bottom:none;}
+.hw-key{color:var(--muted);font-family:var(--mono);font-size:0.85em;flex-shrink:0;}
+.hw-val{color:#e6edf3;text-align:right;}
+
+/* SCORE ROW */
+.score-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+.score-box{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center;}
+.sb-val{font-family:var(--head);font-size:2em;font-weight:800;margin-bottom:4px;}
+.sb-lbl{font-family:var(--mono);font-size:0.62em;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
+
+/* TAILSCALE NET */
+.net-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px;}
+.net-node{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px 16px;display:flex;align-items:center;gap:12px;}
+.net-icon{font-size:1.4em;}
+.net-name{font-family:var(--head);font-size:0.85em;font-weight:700;color:#e6edf3;}
+.net-ip{font-family:var(--mono);font-size:0.7em;color:var(--teal);}
+.net-role{font-size:0.72em;color:var(--muted);}
+
+@media print{
+  #sidebar,#toolbar,#backtop,#prog{display:none!important;}
+  .main{margin-left:0;padding:20px;}
+  .cc-body{display:block!important;}
+}
+</style>
+</head>
+<body>
+<div id="prog"></div>
+
+<nav id="sidebar">
+  <div class="sb-logo">AI-SEC PLATFORM<span class="sb-sub">Technical Brief · 2026</span></div>
+  <div class="sb-label">Navigation</div>
+  <a class="sb-link active" onclick="goto('overview')">◈ Overview</a>
+  <a class="sb-link" onclick="goto('objectives')">◈ Objectives</a>
+  <a class="sb-link" onclick="goto('how-it-works')">◈ How It Works</a>
+  <a class="sb-link" onclick="goto('components')">◈ Components</a>
+  <a class="sb-link" onclick="goto('network')">◈ Network (Tailscale)</a>
+  <a class="sb-link" onclick="goto('attacks')">◈ Attacks Tested</a>
+  <a class="sb-link" onclick="goto('technologies')">◈ Technologies</a>
+  <a class="sb-link" onclick="goto('hardware')">◈ Hardware Requirements</a>
+  <a class="sb-link" onclick="goto('software')">◈ Software Requirements</a>
+  <a class="sb-link" onclick="goto('future')">◈ Future Scope</a>
+</nav>
+
+<div id="toolbar">
+  <button class="tbtn" onclick="window.print()">⬇ Export PDF</button>
+  <button class="tbtn" onclick="expandAll()">⊞ Expand All</button>
+</div>
+<button id="backtop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<div class="main">
+
+  <!-- HERO -->
+  <div class="hero" id="overview">
+    <div class="hero-tag">PROJECT TECHNICAL BRIEF · APRIL 2026 · BLACK BOOK REFERENCE</div>
+    <h1>AI-Powered Security Platform<br><span>with Automated Threat Response</span></h1>
+    <p class="hero-sub">A complete technical reference document covering all system components, objectives, technologies, hardware/software requirements, and tested attack scenarios. Prepared for black book documentation and examiner reference.</p>
+    <div class="hero-stats">
+      <div class="hstat"><div class="hstat-val" style="color:var(--orange)">10</div><div class="hstat-label">Components</div></div>
+      <div class="hstat"><div class="hstat-val" style="color:var(--teal)">4</div><div class="hstat-label">Attacks Tested</div></div>
+      <div class="hstat"><div class="hstat-val" style="color:var(--green)">₹0</div><div class="hstat-label">Licensing Cost</div></div>
+      <div class="hstat"><div class="hstat-val" style="color:var(--purple)">8B</div><div class="hstat-label">AI Parameters</div></div>
+    </div>
+  </div>
+
+  <!-- OBJECTIVES -->
+  <div class="section" id="objectives">
+    <div class="sec-header"><span class="sec-num">01</span><h2>Project Objectives</h2></div>
+    <p>The primary objective of this project is to build a fully automated, open-source security platform targeted at small enterprises that cannot afford commercial SIEM solutions like Splunk or Microsoft Sentinel. The system collects security events, analyzes them using a locally hosted AI model, makes threat decisions, and executes automated response actions — without requiring a human analyst for routine threat handling.</p>
+
+    <div class="obj-grid">
+      <div class="obj-card">
+        <div class="obj-num">OBJ-01</div>
+        <div class="obj-title">Automate Threat Detection</div>
+        <div class="obj-desc">Eliminate manual log review for common attack patterns such as brute force, port scanning, and file integrity violations through rule-based and AI-driven detection.</div>
+      </div>
+      <div class="obj-card">
+        <div class="obj-num">OBJ-02</div>
+        <div class="obj-title">AI-Powered Threat Classification</div>
+        <div class="obj-desc">Use a cybersecurity-specialized large language model (Foundation-Sec-8B) to classify threats with MITRE ATT&CK mapping, confidence scores, and severity ratings.</div>
+      </div>
+      <div class="obj-card">
+        <div class="obj-num">OBJ-03</div>
+        <div class="obj-title">Automated Threat Response</div>
+        <div class="obj-desc">Block attacking IPs at the firewall level within seconds of detection using automated iptables rules via a custom Python API.</div>
+      </div>
+      <div class="obj-card">
+        <div class="obj-num">OBJ-04</div>
+        <div class="obj-title">Host Isolation Capability</div>
+        <div class="obj-desc">Automatically quarantine compromised machines from the network for severe threats like ransomware and C2 beacons, preserving the Wazuh manager connection.</div>
+      </div>
+      <div class="obj-card">
+        <div class="obj-num">OBJ-05</div>
+        <div class="obj-title">Real-Time Analyst Notification</div>
+        <div class="obj-desc">Keep the human analyst informed via Telegram instant messages with full alert details — no need to be physically at a workstation.</div>
+      </div>
+      <div class="obj-card">
+        <div class="obj-num">OBJ-06</div>
+        <div class="obj-title">Zero Licensing Cost</div>
+        <div class="obj-desc">Provide a fully open-source alternative to commercial SIEM/SOAR platforms. Every component is free and runs entirely on-premise with no cloud dependency.</div>
+      </div>
+      <div class="obj-card">
+        <div class="obj-num">OBJ-07</div>
+        <div class="obj-title">Small Enterprise Focus</div>
+        <div class="obj-desc">Deployable on commodity hardware. No expensive cloud infrastructure. Designed for organizations that lack dedicated security teams and budgets.</div>
+      </div>
+      <div class="obj-card">
+        <div class="obj-num">OBJ-08</div>
+        <div class="obj-title">Simplified Agent Onboarding</div>
+        <div class="obj-desc">Enable non-technical analysts to onboard new machines into the security platform via an AI-guided onboarding assistant web page.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="section" id="how-it-works">
+    <div class="sec-header"><span class="sec-num">02</span><h2>How the System Works</h2></div>
+    <p>When an attacker performs a malicious activity such as SSH brute force or port scanning against a monitored machine, the following automated pipeline executes end-to-end within 3 to 6 seconds:</p>
+
+    <div class="flow-container">
+      <div class="flow-step">🖥️ Attacker Action</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">🔍 Wazuh Agent Detects</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">📡 Wazuh Manager Alert</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">🔗 custom-webhook.py</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">⚙️ n8n Pipeline</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">🧠 Foundation-Sec-8B AI</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">⚖️ Decision Engine</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">🚫 Block IP / 📱 Telegram / 🔒 Isolate</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">AI Decision Outputs — Every Alert Gets All 6</div>
+      <table class="os-table">
+        <thead><tr><th>Output Field</th><th>Description</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td><span class="os-name">Decision</span></td><td>Primary automated action to take</td><td><span class="oc-yes">MONITOR / INVESTIGATE / BLOCK_IP / ISOLATE_HOST</span></td></tr>
+          <tr><td><span class="os-name">Threat Type</span></td><td>Classification of the attack</td><td>SSH Brute Force, Port Scan, Ransomware, C2 Beacon</td></tr>
+          <tr><td><span class="os-name">MITRE ATT&CK ID</span></td><td>Industry-standard attack framework mapping</td><td>T1110 (Brute Force), T1046 (Network Scan)</td></tr>
+          <tr><td><span class="os-name">Confidence Score</span></td><td>AI certainty level</td><td>0–100%</td></tr>
+          <tr><td><span class="os-name">Severity</span></td><td>Threat severity rating</td><td>Low / Medium / High / Critical</td></tr>
+          <tr><td><span class="os-name">Reason</span></td><td>Human-readable explanation of decision</td><td>Natural language summary from AI</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">effectiveCount Auto-Block Logic</div>
+      <p style="font-size:0.85em;">The AI receives a <strong style="color:var(--orange)">24-hour alert count</strong> plus a <strong style="color:var(--orange)">5-minute velocity bonus</strong> for the attacking IP. If the combined effectiveCount reaches <strong style="color:var(--red)">15 or above</strong>, the system automatically escalates to BLOCK_IP regardless of individual alert severity — preventing slow, low-and-slow attack patterns from evading detection.</p>
+    </div>
+  </div>
+
+  <!-- COMPONENTS -->
+  <div class="section" id="components">
+    <div class="sec-header"><span class="sec-num">03</span><h2>System Components</h2></div>
+    <p>Click any component to expand its full technical details.</p>
+
+    <div class="comp-grid">
+
+      <!-- WAZUH -->
+      <div class="comp-card">
+        <div class="cc-header" onclick="toggle(this)">
+          <div class="cc-bar teal"></div>
+          <div class="cc-main">
+            <div class="cc-num">01</div>
+            <div class="cc-icon">🛡️</div>
+            <div class="cc-title">Wazuh — SIEM + EDR Engine</div>
+            <div class="cc-badge cb-teal">CORE</div>
+          </div>
+          <div class="cc-chevron">▶</div>
+        </div>
+        <div class="cc-body">
+          <div class="cc-body-inner">
+            <div class="cc-section">
+              <div class="cc-section-title">What It Is</div>
+              <div class="cc-section-body">Open-source Security Information and Event Management platform with built-in Endpoint Detection and Response capabilities. The core security monitoring engine of the entire platform.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Deployment</div>
+              <div class="cc-section-body">Docker containers, single-node setup on Ubuntu SOC server. Version: Wazuh 4.14.2. Config at <code>/var/ossec/etc/ossec.conf</code> inside the container.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Key Features Used</div>
+              <div class="cc-section-body">
+                <ul>
+                  <li>Agent-based log collection from endpoint machines</li>
+                  <li>Rule-based alert generation (brute force, port scan, suspicious process)</li>
+                  <li>File Integrity Monitoring (FIM) on /home/soc and /etc/iptables/</li>
+                  <li>Integratord — forwards alerts to n8n via custom webhook script</li>
+                  <li>Active Response — triggers isolation scripts on monitored agents</li>
+                </ul>
+              </div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Agents Monitored</div>
+              <div class="cc-section-body">
+                <ul>
+                  <li><strong>SIEM-SERVER</strong> — the SOC server itself (Agent ID 001)</li>
+                  <li><strong>LAB-SERVER</strong> — secondary Ubuntu 24.04 VM (Agent ID 003)</li>
+                </ul>
+              </div>
+            </div>
+            <div class="cc-note"><strong>Note:</strong> Wazuh persistence across container restarts is maintained via a Docker volume (wazuh_integrations) and a systemd service (wazuh-integrations-fix.service) that auto-corrects file ownership on boot.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- N8N -->
+      <div class="comp-card">
+        <div class="cc-header" onclick="toggle(this)">
+          <div class="cc-bar orange"></div>
+          <div class="cc-main">
+            <div class="cc-num">02</div>
+            <div class="cc-icon">⚙️</div>
+            <div class="cc-title">n8n — Workflow Automation / SOAR</div>
+            <div class="cc-badge cb-orange">ORCHESTRATOR</div>
+          </div>
+          <div class="cc-chevron">▶</div>
+        </div>
+        <div class="cc-body">
+          <div class="cc-body-inner">
+            <div class="cc-section">
+              <div class="cc-section-title">What It Is</div>
+              <div class="cc-section-body">Open-source workflow automation platform used as a lightweight SOAR (Security Orchestration, Automation and Response) engine. The central brain that orchestrates all pipeline actions.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Deployment</div>
+              <div class="cc-section-body">Docker container, port 5678, on the Ubuntu SOC server. Version: n8n v12.9.4. Pipeline: 42 nodes. maxConcurrency set to 1 to prevent race conditions.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Key Nodes Used</div>
+              <div class="cc-section-body">
+                <ul>
+                  <li>Webhook node — receives Wazuh alerts as JSON</li>
+                  <li>HTTP Request nodes — calls AI, IP blocker, and Telegram APIs</li>
+                  <li>Code nodes (JavaScript) — enriches context, builds AI prompts</li>
+                  <li>IF/Switch nodes — routes decisions to action branches</li>
+                  <li>InfluxDB nodes — reads history, writes decisions</li>
+                </ul>
+              </div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Network Bridges</div>
+              <div class="cc-section-body">n8n bridges both soc_network (172.x.x.x/16) and single-node_default (172.x.x.x/16) Docker networks to reach all internal services.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FOUNDATION-SEC-8B -->
+      <div class="comp-card">
+        <div class="cc-header" onclick="toggle(this)">
+          <div class="cc-bar purple"></div>
+          <div class="cc-main">
+            <div class="cc-num">03</div>
+            <div class="cc-icon">🧠</div>
+            <div class="cc-title">Foundation-Sec-8B via Ollama — AI Threat Analysis</div>
+            <div class="cc-badge cb-purple">AI ENGINE</div>
+          </div>
+          <div class="cc-chevron">▶</div>
+        </div>
+        <div class="cc-body">
+          <div class="cc-body-inner">
+            <div class="cc-section">
+              <div class="cc-section-title">What It Is</div>
+              <div class="cc-section-body">Foundation-Sec-8B is an 8 billion parameter Large Language Model specifically trained and fine-tuned by Fortinet on cybersecurity data. It runs locally via Ollama — an open-source local LLM runtime. No data leaves the network.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Model Specs</div>
+              <div class="cc-section-body">Foundation-Sec-8B-Instruct, Q4_K_M quantized (~5GB). Runs on Windows host via Ollama on RTX 5060 8GB VRAM (CUDA-accelerated). Accessible to Ubuntu VM over Tailscale at port 11434.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Why Local AI</div>
+              <div class="cc-section-body">
+                <ul>
+                  <li>No security data leaves the network</li>
+                  <li>No API costs or internet dependency</li>
+                  <li>Cybersecurity-specialized — not a generic LLM</li>
+                  <li>Suitable for enterprise on-premise deployment</li>
+                </ul>
+              </div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">AI Output Fields</div>
+              <div class="cc-section-body">Decision, Threat Type, MITRE ATT&CK ID, Confidence Score (0-100%), Severity (Low/Medium/High/Critical), Human-readable Reason</div>
+            </div>
+            <div class="cc-note"><strong>Important:</strong> Ollama must be started with OLLAMA_ORIGINS="*" on the Windows host to allow cross-origin requests from the Ubuntu VM.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INFLUXDB -->
+      <div class="comp-card">
+        <div class="cc-header" onclick="toggle(this)">
+          <div class="cc-bar blue"></div>
+          <div class="cc-main">
+            <div class="cc-num">04</div>
+            <div class="cc-icon">🗄️</div>
+            <div class="cc-title">InfluxDB — Time-Series Alert Database</div>
+            <div class="cc-badge cb-blue">DATABASE</div>
+          </div>
+          <div class="cc-chevron">▶</div>
+        </div>
+        <div class="cc-body">
+          <div class="cc-body-inner">
+            <div class="cc-section">
+              <div class="cc-section-title">What It Is</div>
+              <div class="cc-section-body">Open-source time-series database optimized for storing and querying time-stamped data. Acts as the persistent memory and context store for the entire pipeline.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Deployment</div>
+              <div class="cc-section-body">Docker container, port 8086, on the Ubuntu SOC server. Version: InfluxDB 2.x. Queries written in Flux query language.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Key Uses</div>
+              <div class="cc-section-body">
+                <ul>
+                  <li>Alert history — 24-hour count and 5-minute velocity per source IP</li>
+                  <li>Deduplication — prevents duplicate Telegram messages</li>
+                  <li>Decision logging — stores every AI decision with full metadata</li>
+                  <li>Isolated hosts tracking — records currently quarantined agents</li>
+                </ul>
+              </div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Data Stored Per Alert</div>
+              <div class="cc-section-body">Timestamp, Source IP, Agent name, AI Decision, Threat type, Severity, Confidence score, MITRE ATT&CK ID</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BLOCKER.PY -->
+      <div class="comp-card">
+        <div class="cc-header" onclick="toggle(this)">
+          <div class="cc-bar red"></div>
+          <div class="cc-main">
+            <div class="cc-num">05</div>
+            <div class="cc-icon">🚫</div>
+            <div class="cc-title">ip-blocker.py — Automated Firewall Response</div>
+            <div class="cc-badge cb-red">CUSTOM API</div>
+          </div>
+          <div class="cc-chevron">▶</div>
+        </div>
+        <div class="cc-body">
+          <div class="cc-body-inner">
+            <div class="cc-section">
+              <div class="cc-section-title">What It Is</div>
+              <div class="cc-section-body">A custom Python Flask API server written specifically for this project. Executes actual firewall blocking at the OS network level when n8n sends a BLOCK_IP decision.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Deployment</div>
+              <div class="cc-section-body">Runs as a systemd service on the Ubuntu SOC server, auto-starts on boot. Version: blocker.py v3.0. Listens on port 9999.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">How It Works</div>
+              <div class="cc-section-body">
+                <ul>
+                  <li>Receives block/unblock requests from n8n via HTTP POST</li>
+                  <li>Adds iptables INPUT chain DROP rules for attacking IP</li>
+                  <li>Persists blocked IPs to /etc/iptables/blocked-ips for reboot survival</li>
+                  <li>Has a /verify endpoint so n8n can confirm the block executed</li>
+                </ul>
+              </div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Path</div>
+              <div class="cc-section-body"><code>/home/soc/blocker.py</code> on the SOC server. Blocked IPs persist at <code>/etc/iptables/blocked-ips</code> via netfilter-persistent.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TELEGRAM -->
+      <div class="comp-card">
+        <div class="cc-header" onclick="toggle(this)">
+          <div class="cc-bar blue"></div>
+          <div class="cc-main">
+            <div class="cc-num">06</div>
+            <div class="cc-icon">📱</div>
+            <div class="cc-title">Telegram Bot — Real-Time Analyst Notification</div>
+            <div class="cc-badge cb-blue">NOTIFICATION</div>
+          </div>
+          <div class="cc-chevron">▶</div>
+        </div>
+        <div class="cc-body">
+          <div class="cc-body-inner">
+            <div class="cc-section">
+              <div class="cc-section-title">What It Is</div>
+              <div class="cc-section-body">Telegram's Bot API used to deliver formatted security alert messages to the SOC analyst's phone in real time. Free, instant, works on any device with no additional infrastructure required.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Deployment</div>
+              <div class="cc-section-body">No server needed. n8n calls the Telegram Bot API directly via an HTTP Request node. A Telegram Bot token and chat ID are configured in the n8n workflow.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Message Contents</div>
+              <div class="cc-section-body">
+                <ul>
+                  <li>AI Decision (MONITOR / INVESTIGATE / BLOCK_IP / ISOLATE_HOST)</li>
+                  <li>Threat Type and MITRE ATT&CK ID</li>
+                  <li>Source IP address of the attacker</li>
+                  <li>Affected agent / machine name</li>
+                  <li>AI confidence score and severity level</li>
+                  <li>Human-readable reason from the AI</li>
+                  <li>Timestamp of the alert</li>
+                </ul>
+              </div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Deduplication</div>
+              <div class="cc-section-body">InfluxDB is checked before sending. Duplicate alerts within the dedup window are suppressed to prevent notification spam to the analyst.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAILSCALE -->
+      <div class="comp-card">
+        <div class="cc-header" onclick="toggle(this)">
+          <div class="cc-bar teal"></div>
+          <div class="cc-main">
+            <div class="cc-num">07</div>
+            <div class="cc-icon">🌐</div>
+            <div class="cc-title">Tailscale — Secure Mesh Network Backbone</div>
+            <div class="cc-badge cb-teal">NETWORKING</div>
+          </div>
+          <div class="cc-chevron">▶</div>
+        </div>
+        <div class="cc-body">
+          <div class="cc-body-inner">
+            <div class="cc-section">
+              <div class="cc-section-title">What It Is</div>
+              <div class="cc-section-body">A zero-configuration VPN built on WireGuard that creates a secure private mesh network between all devices. Without Tailscale, no component of the platform could communicate securely across machines.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Why It's Critical</div>
+              <div class="cc-section-body">
+                <ul>
+                  <li>Wazuh agents communicate with Wazuh manager over Tailscale</li>
+                  <li>n8n calls the Ollama AI on Windows via Tailscale IP</li>
+                  <li>No component is exposed to the public internet</li>
+                  <li>Each machine gets a stable private 100.x.x.x IP that never changes</li>
+                </ul>
+              </div>
+            </div>
+            <div class="cc-section" style="grid-column:1/-1;">
+              <div class="cc-section-title">Deployment</div>
+              <div class="cc-section-body">Installed as a system service on all machines. Runs automatically on boot. No additional configuration needed after initial setup.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CUSTOM-WEBHOOK -->
+      <div class="comp-card">
+        <div class="cc-header" onclick="toggle(this)">
+          <div class="cc-bar yellow"></div>
+          <div class="cc-main">
+            <div class="cc-num">08</div>
+            <div class="cc-icon">🔗</div>
+            <div class="cc-title">custom-webhook.py — Wazuh to n8n Bridge</div>
+            <div class="cc-badge cb-yellow">INTEGRATION</div>
+          </div>
+          <div class="cc-chevron">▶</div>
+        </div>
+        <div class="cc-body">
+          <div class="cc-body-inner">
+            <div class="cc-section">
+              <div class="cc-section-title">What It Is</div>
+              <div class="cc-section-body">A custom Python script that acts as the integration bridge between Wazuh and n8n. Wazuh's integratord module calls this script whenever an alert fires.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Why It's Needed</div>
+              <div class="cc-section-body">Wazuh cannot natively POST to arbitrary webhooks in the format n8n expects. This script handles the JSON translation and forwards the alert to the n8n webhook endpoint.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Deployment</div>
+              <div class="cc-section-body">Stored in a persistent Docker volume (wazuh_integrations). Auto-corrected by systemd service (wazuh-integrations-fix.service) on every boot to maintain correct file ownership (root:999).</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Files</div>
+              <div class="cc-section-body"><code>custom-webhook</code> (no extension, the trigger script) and <code>custom-webhook.py</code> (the Python logic). Both must exist with correct permissions.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ISOLATE HOST -->
+      <div class="comp-card">
+        <div class="cc-header" onclick="toggle(this)">
+          <div class="cc-bar red"></div>
+          <div class="cc-main">
+            <div class="cc-num">09</div>
+            <div class="cc-icon">🔒</div>
+            <div class="cc-title">isolate-host.sh — Active Response Host Isolation</div>
+            <div class="cc-badge cb-red">ACTIVE RESPONSE</div>
+          </div>
+          <div class="cc-chevron">▶</div>
+        </div>
+        <div class="cc-body">
+          <div class="cc-body-inner">
+            <div class="cc-section">
+              <div class="cc-section-title">What It Is</div>
+              <div class="cc-section-body">A shell script registered as a Wazuh active response command. When the AI decides ISOLATE_HOST, this script runs directly on the affected agent machine and applies iptables rules that block ALL network traffic except the Wazuh manager connection.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Trigger Conditions</div>
+              <div class="cc-section-body">ISOLATE_HOST is triggered only for: Ransomware detection, Malware detection, C2 Beacon activity, and other severe threat classifications.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Commands Registered</div>
+              <div class="cc-section-body"><code>isolate-host</code> — applies network quarantine iptables rules.<br><code>unisolate-host</code> — reverses isolation, restores full connectivity.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Tested With</div>
+              <div class="cc-section-body">Atomic Red Team ransomware simulation on LAB-SERVER. Wazuh detected the simulated ransomware behavior and ISOLATE_HOST triggered correctly, cutting off all network traffic.</div>
+            </div>
+            <div class="cc-warn"><strong>Known Gap:</strong> Wazuh group config sync only pushes agent.conf, not arbitrary shell scripts. The isolation script must be manually placed on each agent. Future fix: Ansible-based automated deployment to all agents.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ONBOARDING PAGE -->
+      <div class="comp-card">
+        <div class="cc-header" onclick="toggle(this)">
+          <div class="cc-bar green"></div>
+          <div class="cc-main">
+            <div class="cc-num">10</div>
+            <div class="cc-icon">🤖</div>
+            <div class="cc-title">AI-Powered Agent Onboarding Assistant</div>
+            <div class="cc-badge cb-green">WEB APP</div>
+          </div>
+          <div class="cc-chevron">▶</div>
+        </div>
+        <div class="cc-body">
+          <div class="cc-body-inner">
+            <div class="cc-section">
+              <div class="cc-section-title">What It Is</div>
+              <div class="cc-section-body">A custom-built HTML/JavaScript web application served on port 8888 on the SOC server. Powered by Foundation-Sec-8B as the AI backend via Ollama. Guides analysts step-by-step through onboarding a new Wazuh agent onto the platform.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Key Features</div>
+              <div class="cc-section-body">
+                <ul>
+                  <li>AI chat interface for onboarding questions and commands</li>
+                  <li>Smart context injection — feeds only relevant guide sections to AI</li>
+                  <li>Covers full onboarding: Tailscale setup, Wazuh agent install, group assignment, script placement, verification</li>
+                  <li>"Generate Update Report" modal — formatted session summary</li>
+                  <li>Fully on-premise — no external API calls</li>
+                </ul>
+              </div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Why It Matters</div>
+              <div class="cc-section-body">Reduces dependency on human expertise for onboarding. A non-technical analyst can onboard a new machine by following AI guidance without needing to know every command.</div>
+            </div>
+            <div class="cc-section">
+              <div class="cc-section-title">Deployment</div>
+              <div class="cc-section-body">Static HTML file with JavaScript. Version: soc_onboarding_v6.html. Backend AI calls go to Ollama on Windows host via Tailscale network.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TAILSCALE NETWORK -->
+  <div class="section" id="network">
+    <div class="sec-header"><span class="sec-num">04</span><h2>Tailscale Network Map</h2></div>
+    <p>All components communicate over a secure Tailscale WireGuard mesh network. Each machine has a stable private IP in the 100.x.x.x range. No traffic is exposed to the public internet.</p>
+    <div class="net-grid">
+      <div class="net-node">
+        <div class="net-icon">🖥️</div>
+        <div>
+          <div class="net-name">SIEM-SERVER</div>
+          <div class="net-ip">100.x.x.x</div>
+          <div class="net-role">Ubuntu SOC Server — Wazuh Manager, n8n, InfluxDB, blocker.py</div>
+        </div>
+      </div>
+      <div class="net-node">
+        <div class="net-icon">💻</div>
+        <div>
+          <div class="net-name">loq (Windows AI Host)</div>
+          <div class="net-ip">100.x.x.x</div>
+          <div class="net-role">Lenovo LOQ — Ollama + Foundation-Sec-8B, RTX 5060</div>
+        </div>
+      </div>
+      <div class="net-node">
+        <div class="net-icon">🖥️</div>
+        <div>
+          <div class="net-name">LAB-SERVER</div>
+          <div class="net-ip">100.x.x.x</div>
+          <div class="net-role">Ubuntu 24.04 VM — Wazuh Agent ID 003, monitored endpoint</div>
+        </div>
+      </div>
+      <div class="net-node">
+        <div class="net-icon">⚔️</div>
+        <div>
+          <div class="net-name">ATTACKER-KALI</div>
+          <div class="net-ip">100.x.x.x</div>
+          <div class="net-role">Kali Linux — Attack machine for testing and simulation</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ATTACKS TESTED -->
+  <div class="section" id="attacks">
+    <div class="sec-header"><span class="sec-num">05</span><h2>Attacks Tested & Demonstrated</h2></div>
+    <p>The following attack scenarios were executed against the live platform to verify end-to-end pipeline functionality. All attacks resulted in correct detection, AI classification, and automated response.</p>
+
+    <div class="panel">
+      <div class="panel-title">Tested Attack Scenarios</div>
+      <div class="atk-row">
+        <div class="atk-badge ab-brute">SSH BRUTE FORCE</div>
+        <div class="atk-content">
+          <div class="atk-title">SSH Brute Force Attack</div>
+          <div class="atk-detail">Executed using Hydra from a TryHackMe AttackBox (IP: 100.x.x.x). Targeted the SSH service on the monitored Linux agent. Generated hundreds of failed login attempts within seconds.</div>
+          <div class="atk-response">✓ Detected by Wazuh Rule 5763 → AI classified as T1110 → IP auto-blocked via iptables within 3–6 seconds → Telegram alert sent</div>
+        </div>
+      </div>
+      <div class="atk-row">
+        <div class="atk-badge ab-scan">PORT SCAN</div>
+        <div class="atk-content">
+          <div class="atk-title">Network Port Scan</div>
+          <div class="atk-detail">Executed using Nmap against the monitored agents. Full TCP SYN scan covering all common ports to simulate attacker reconnaissance phase.</div>
+          <div class="atk-response">✓ Detected by Wazuh Rule 40101 → AI classified as T1046 → INVESTIGATE / MONITOR decision → Telegram alert sent with MITRE mapping</div>
+        </div>
+      </div>
+      <div class="atk-row">
+        <div class="atk-badge ab-fim">FILE INTEGRITY</div>
+        <div class="atk-content">
+          <div class="atk-title">File Integrity Monitoring (FIM) Violation</div>
+          <div class="atk-detail">Unauthorized file modifications performed inside monitored directories (/home/soc and /etc/iptables/). Simulates insider threat or post-compromise file tampering.</div>
+          <div class="atk-response">✓ Detected by Wazuh FIM engine → AI classified threat → Telegram alert fired with changed file details and timestamps</div>
+        </div>
+      </div>
+      <div class="atk-row">
+        <div class="atk-badge ab-ransomware">RANSOMWARE SIM</div>
+        <div class="atk-content">
+          <div class="atk-title">Ransomware Simulation — Host Isolation Test</div>
+          <div class="atk-detail">Executed using Atomic Red Team framework on LAB-SERVER. Simulated ransomware behavior patterns including file encryption activity and C2-like behavior.</div>
+          <div class="atk-response">✓ Wazuh detected simulated ransomware behavior → AI classified as ISOLATE_HOST → isolate-host.sh ran on agent → All network traffic blocked except Wazuh manager → Host successfully quarantined</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TECHNOLOGIES -->
+  <div class="section" id="technologies">
+    <div class="sec-header"><span class="sec-num">06</span><h2>Technologies Used</h2></div>
+
+    <table class="os-table">
+      <thead>
+        <tr>
+          <th>Technology</th>
+          <th>Version</th>
+          <th>Category</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="os-name">Wazuh</span></td><td>4.14.2</td><td><span class="oc-yes">SIEM / EDR</span></td><td>Security monitoring and alert generation</td></tr>
+        <tr><td><span class="os-name">n8n</span></td><td>v12.9.4</td><td><span class="oc-yes">SOAR / Automation</span></td><td>Pipeline orchestration and workflow automation</td></tr>
+        <tr><td><span class="os-name">Foundation-Sec-8B</span></td><td>Q4_K_M</td><td><span class="oc-custom">AI / LLM</span></td><td>Cybersecurity-specialized threat classification</td></tr>
+        <tr><td><span class="os-name">Ollama</span></td><td>Latest stable</td><td><span class="oc-custom">LLM Runtime</span></td><td>Local AI model hosting on Windows host</td></tr>
+        <tr><td><span class="os-name">InfluxDB</span></td><td>2.x</td><td><span class="oc-yes">Time-Series DB</span></td><td>Alert storage, history, and deduplication</td></tr>
+        <tr><td><span class="os-name">ip-blocker.py</span></td><td>v3.0</td><td><span class="oc-custom">Custom API</span></td><td>Automated iptables firewall blocking</td></tr>
+        <tr><td><span class="os-name">Telegram Bot API</span></td><td>Latest</td><td><span class="oc-yes">Notification</span></td><td>Real-time analyst alerts on mobile</td></tr>
+        <tr><td><span class="os-name">Tailscale</span></td><td>Latest stable</td><td><span class="oc-yes">VPN / Networking</span></td><td>Secure WireGuard mesh network between all components</td></tr>
+        <tr><td><span class="os-name">Docker + Docker Compose</span></td><td>Latest stable</td><td><span class="oc-yes">Containerization</span></td><td>Wazuh and n8n containerized deployment</td></tr>
+        <tr><td><span class="os-name">Python (Flask)</span></td><td>3.10+</td><td><span class="oc-yes">Backend</span></td><td>ip-blocker.py and custom-webhook.py scripts</td></tr>
+        <tr><td><span class="os-name">iptables</span></td><td>Built-in Linux</td><td><span class="oc-yes">Firewall</span></td><td>Network-level IP blocking and host isolation</td></tr>
+        <tr><td><span class="os-name">netfilter-persistent</span></td><td>Latest stable</td><td><span class="oc-yes">Persistence</span></td><td>iptables rule survival across reboots</td></tr>
+        <tr><td><span class="os-name">Ubuntu</span></td><td>22.04 LTS</td><td><span class="oc-yes">OS</span></td><td>SOC server operating system</td></tr>
+        <tr><td><span class="os-name">Windows 11</span></td><td>Latest</td><td><span class="oc-yes">OS</span></td><td>AI host operating system (Lenovo LOQ)</td></tr>
+        <tr><td><span class="os-name">Atomic Red Team</span></td><td>Latest</td><td><span class="oc-custom">Testing</span></td><td>Ransomware and attack simulation framework</td></tr>
+        <tr><td><span class="os-name">Hydra</span></td><td>Latest</td><td><span class="oc-custom">Testing</span></td><td>SSH brute force simulation tool</td></tr>
+        <tr><td><span class="os-name">Nmap</span></td><td>Latest</td><td><span class="oc-custom">Testing</span></td><td>Network port scanning simulation</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- HARDWARE REQUIREMENTS -->
+  <div class="section" id="hardware">
+    <div class="sec-header"><span class="sec-num">07</span><h2>Hardware Requirements</h2></div>
+
+    <div class="hw-grid">
+      <div class="hw-card">
+        <div class="hw-card-title" style="color:var(--yellow)">⚠ Minimum Requirements</div>
+        <div class="hw-row"><span class="hw-key">CPU</span><span class="hw-val">Intel Core i5 8th Gen or AMD Ryzen 5 3000 series</span></div>
+        <div class="hw-row"><span class="hw-key">RAM</span><span class="hw-val">16 GB DDR4</span></div>
+        <div class="hw-row"><span class="hw-key">Storage</span><span class="hw-val">100 GB SSD</span></div>
+        <div class="hw-row"><span class="hw-key">GPU</span><span class="hw-val">Not required (CPU-only AI inference — very slow)</span></div>
+        <div class="hw-row"><span class="hw-key">Network</span><span class="hw-val">1 Gbps LAN or stable WiFi</span></div>
+        <div class="hw-row"><span class="hw-key">OS</span><span class="hw-val">Ubuntu 22.04 LTS + Windows 10/11</span></div>
+        <div class="hw-row"><span class="hw-key">Internet</span><span class="hw-val">Required for Tailscale setup and Telegram only</span></div>
+      </div>
+      <div class="hw-card">
+        <div class="hw-card-title" style="color:var(--green)">✓ Recommended / Optimal Requirements</div>
+        <div class="hw-row"><span class="hw-key">CPU</span><span class="hw-val">Intel Core i7 12th Gen or AMD Ryzen 7 5000 series</span></div>
+        <div class="hw-row"><span class="hw-key">RAM</span><span class="hw-val">32 GB DDR5</span></div>
+        <div class="hw-row"><span class="hw-key">Storage</span><span class="hw-val">256 GB NVMe SSD</span></div>
+        <div class="hw-row"><span class="hw-key">GPU</span><span class="hw-val">NVIDIA RTX 4060 8GB VRAM or better (CUDA AI inference)</span></div>
+        <div class="hw-row"><span class="hw-key">Network</span><span class="hw-val">1 Gbps LAN</span></div>
+        <div class="hw-row"><span class="hw-key">OS</span><span class="hw-val">Ubuntu 22.04 LTS + Windows 11</span></div>
+        <div class="hw-row"><span class="hw-key">Internet</span><span class="hw-val">Required for Tailscale and Telegram API only</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Our Development Hardware</div>
+      <table class="os-table">
+        <thead><tr><th>Machine</th><th>Role</th><th>Specs</th></tr></thead>
+        <tbody>
+          <tr><td><span class="os-name">Lenovo LOQ 15AHP10</span></td><td>AI Host (Windows 11)</td><td>RTX 5060 8GB VRAM, Ollama + Foundation-Sec-8B</td></tr>
+          <tr><td><span class="os-name">Ubuntu VM (on LOQ)</span></td><td>SOC Server (SIEM-SERVER)</td><td>Wazuh, n8n, InfluxDB, blocker.py, custom-webhook.py</td></tr>
+          <tr><td><span class="os-name">Ubuntu 24.04 VM</span></td><td>Monitored Agent (LAB-SERVER)</td><td>Wazuh Agent ID 003, Tailscale IP 100.x.x.x</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SOFTWARE REQUIREMENTS -->
+  <div class="section" id="software">
+    <div class="sec-header"><span class="sec-num">08</span><h2>Software Requirements</h2></div>
+    <table class="os-table">
+      <thead><tr><th>Software</th><th>Version</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><span class="os-name">Ubuntu</span></td><td>22.04 LTS</td><td>SOC server operating system</td></tr>
+        <tr><td><span class="os-name">Windows 11</span></td><td>Latest</td><td>AI host operating system</td></tr>
+        <tr><td><span class="os-name">Docker + Docker Compose</span></td><td>Latest stable</td><td>Containerized deployment of Wazuh and n8n</td></tr>
+        <tr><td><span class="os-name">Wazuh</span></td><td>4.14.2</td><td>Core SIEM and EDR platform</td></tr>
+        <tr><td><span class="os-name">n8n</span></td><td>v12.9.4</td><td>Workflow automation and SOAR</td></tr>
+        <tr><td><span class="os-name">Ollama</span></td><td>Latest stable</td><td>Local LLM runtime on Windows host</td></tr>
+        <tr><td><span class="os-name">Foundation-Sec-8B-Instruct</span></td><td>Q4_K_M quantized</td><td>AI threat analysis model (~5GB)</td></tr>
+        <tr><td><span class="os-name">InfluxDB</span></td><td>2.x</td><td>Time-series alert database</td></tr>
+        <tr><td><span class="os-name">Python</span></td><td>3.10+</td><td>blocker.py and custom-webhook.py runtime</td></tr>
+        <tr><td><span class="os-name">Flask</span></td><td>Latest stable</td><td>Python API framework for blocker.py</td></tr>
+        <tr><td><span class="os-name">Tailscale</span></td><td>Latest stable</td><td>Mesh VPN networking across all machines</td></tr>
+        <tr><td><span class="os-name">Telegram App</span></td><td>Any version</td><td>Analyst notification receiver</td></tr>
+        <tr><td><span class="os-name">iptables</span></td><td>Built into Linux kernel</td><td>Firewall rules and IP blocking</td></tr>
+        <tr><td><span class="os-name">netfilter-persistent</span></td><td>Latest stable</td><td>iptables rule persistence across reboots</td></tr>
+        <tr><td><span class="os-name">NVIDIA CUDA Toolkit</span></td><td>Compatible with GPU</td><td>GPU-accelerated AI inference via Ollama (recommended)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FUTURE SCOPE -->
+  <div class="section" id="future">
+    <div class="sec-header"><span class="sec-num">09</span><h2>Future Scope</h2></div>
+    <p>The following enhancements are planned for post-submission development and are acknowledged as known gaps in the current implementation.</p>
+
+    <div class="panel">
+      <div class="panel-title">Planned Future Enhancements</div>
+
+      <div class="atk-row">
+        <div class="atk-badge" style="background:rgba(248,81,73,0.1);color:var(--red);border:1px solid rgba(248,81,73,0.3);width:130px;">HIGH PRIORITY</div>
+        <div class="atk-content">
+          <div class="atk-title">SOC Dashboard — Real-Time Visual Monitoring</div>
+          <div class="atk-detail">A dedicated web dashboard reading live data from InfluxDB to display total alerts, blocked IPs, severity breakdown, recent incident log, AI decision distribution, and currently isolated hosts. Currently not implemented — planned as next major feature.</div>
+        </div>
+      </div>
+
+      <div class="atk-row">
+        <div class="atk-badge" style="background:rgba(248,81,73,0.1);color:var(--red);border:1px solid rgba(248,81,73,0.3);width:130px;">HIGH PRIORITY</div>
+        <div class="atk-content">
+          <div class="atk-title">Ansible-Based Isolation Script Deployment</div>
+          <div class="atk-detail">Automate deployment of isolate-host.sh to all agents via Ansible playbooks. Currently the script must be manually placed on each agent because Wazuh group config sync only pushes agent.conf, not arbitrary shell scripts.</div>
+        </div>
+      </div>
+
+      <div class="atk-row">
+        <div class="atk-badge" style="background:rgba(240,136,62,0.1);color:var(--orange);border:1px solid rgba(240,136,62,0.3);width:130px;">MEDIUM</div>
+        <div class="atk-content">
+          <div class="atk-title">Block Verification Endpoint</div>
+          <div class="atk-detail">A dedicated /verify endpoint on blocker.py plus an n8n confirmation node so the AI can re-verify and acknowledge whether the iptables block actually executed — not just report that it was requested.</div>
+        </div>
+      </div>
+
+      <div class="atk-row">
+        <div class="atk-badge" style="background:rgba(240,136,62,0.1);color:var(--orange);border:1px solid rgba(240,136,62,0.3);width:130px;">MEDIUM</div>
+        <div class="atk-content">
+          <div class="atk-title">Windows & macOS Agent Response Support</div>
+          <div class="atk-detail">Extend IP blocking and host isolation capabilities to Windows agents (using Windows Firewall / netsh) and macOS agents. Currently only Linux/Ubuntu agents support full automated response.</div>
+        </div>
+      </div>
+
+      <div class="atk-row">
+        <div class="atk-badge" style="background:rgba(163,113,247,0.1);color:var(--purple);border:1px solid rgba(163,113,247,0.3);width:130px;">ROADMAP</div>
+        <div class="atk-content">
+          <div class="atk-title">TheHive Integration — Case Management</div>
+          <div class="atk-detail">TheHive (open-source incident response platform) was partially deployed on port 9000 as a future case management layer. Full integration with n8n will enable analyst feedback loops and formal incident tracking.</div>
+        </div>
+      </div>
+
+      <div class="atk-row">
+        <div class="atk-badge" style="background:rgba(163,113,247,0.1);color:var(--purple);border:1px solid rgba(163,113,247,0.3);width:130px;">ROADMAP</div>
+        <div class="atk-content">
+          <div class="atk-title">AI Intelligence Upgrade Layers</div>
+          <div class="atk-detail">L2: Analyst feedback loop (requires TheHive + n8n wired). L3: AI-driven decisions using 2–3 months of L2 data. L4: Fine-tuning Foundation-Sec-8B on own incident data (6+ months of data required). Must follow this order strictly.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div style="margin-top:14px;padding:14px 20px;border-top:1px solid var(--border);font-family:var(--mono);font-size:0.72em;color:var(--muted2);text-align:center;">
+    Author: <span style="color:var(--teal);">Aditya Suresh Acharya</span> &nbsp;·&nbsp; © 2026
+  </div>
+
+</div><!-- end main -->
+
+<script>
+function toggle(header){
+  const body = header.parentElement.querySelector('.cc-body');
+  const chev = header.querySelector('.cc-chevron');
+  body.classList.toggle('show');
+  chev.classList.toggle('open');
+}
+function expandAll(){
+  document.querySelectorAll('.cc-body').forEach(b=>b.classList.add('show'));
+  document.querySelectorAll('.cc-chevron').forEach(c=>c.classList.add('open'));
+}
+function goto(id){
+  document.getElementById(id)?.scrollIntoView({behavior:'smooth'});
+  document.querySelectorAll('.sb-link').forEach(l=>l.classList.remove('active'));
+  event.target.classList.add('active');
+}
+window.addEventListener('scroll',()=>{
+  const pct = (window.scrollY/(document.body.scrollHeight-window.innerHeight))*100;
+  document.getElementById('prog').style.width=pct+'%';
+  document.getElementById('backtop').classList.toggle('show',window.scrollY>400);
+  // Active sidebar tracking
+  const sections=['overview','objectives','how-it-works','components','network','attacks','technologies','hardware','software','future'];
+  const links=document.querySelectorAll('.sb-link');
+  sections.forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(el){
+      const rect=el.getBoundingClientRect();
+      if(rect.top<=100&&rect.bottom>0){
+        links.forEach(l=>l.classList.remove('active'));
+        if(links[i])links[i].classList.add('active');
+      }
+    }
+  });
+});
+</script>
+</body>
+</html>

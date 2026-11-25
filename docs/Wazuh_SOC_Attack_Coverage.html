@@ -1,0 +1,1082 @@
+<!--
+  Attack Coverage Matrix — Wazuh AI-SOC
+  Author: Aditya Suresh Acharya
+  © 2026 Aditya Suresh Acharya. All rights reserved unless otherwise licensed.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="author" content="Aditya Suresh Acharya">
+<title>Attack Coverage Matrix — Wazuh AI-SOC</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0d1117;--bg2:#161b22;--bg3:#1c2230;
+  --border:rgba(48,60,80,0.8);--teal:#38bda9;--green:#3fb950;
+  --orange:#f0883e;--red:#f85149;--purple:#a371f7;--yellow:#e3b341;
+  --text:#c9d1d9;--muted:#8b949e;--muted2:#484f58;
+  --mono:'JetBrains Mono',monospace;--head:'Syne',sans-serif;--body:'Inter',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:var(--body);background:var(--bg);color:var(--text);line-height:1.7;overflow-x:hidden;}
+
+#prog{position:fixed;top:0;left:0;height:2px;z-index:9999;background:linear-gradient(90deg,var(--teal),var(--green));width:0%;transition:width 0.1s;}
+
+#sidebar{position:fixed;left:0;top:0;height:100vh;width:230px;background:#0d1117;border-right:1px solid var(--border);z-index:900;display:flex;flex-direction:column;padding:24px 0;overflow-y:auto;}
+.sb-logo{font-family:var(--head);font-size:0.72em;font-weight:800;color:var(--teal);padding:0 16px 18px;letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.sb-sub{font-size:0.58em;color:var(--muted);font-family:var(--mono);display:block;margin-top:3px;letter-spacing:1px;}
+.sb-label{font-size:0.58em;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);padding:8px 16px 4px;}
+.sb-link{display:flex;align-items:center;gap:8px;padding:7px 16px;font-size:0.76em;color:var(--muted);text-decoration:none;border-left:2px solid transparent;transition:all 0.2s;cursor:pointer;}
+.sb-link:hover,.sb-link.active{color:var(--teal);border-left-color:var(--teal);background:rgba(56,189,170,0.06);}
+
+#toolbar{position:fixed;top:14px;right:16px;z-index:999;display:flex;gap:6px;}
+.tbtn{background:#161b22;border:1px solid var(--border);border-radius:6px;padding:5px 13px;color:var(--teal);cursor:pointer;font-size:0.72em;transition:all 0.2s;}
+.tbtn:hover{border-color:var(--teal);}
+
+#backtop{position:fixed;bottom:22px;right:22px;z-index:999;width:36px;height:36px;border-radius:6px;background:rgba(56,189,170,0.1);border:1px solid var(--teal);color:var(--teal);cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:all 0.3s;}
+#backtop.show{opacity:1;pointer-events:auto;}
+
+.main{margin-left:230px;padding:0 48px 80px;max-width:1100px;position:relative;z-index:1;}
+
+.hero{padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:48px;}
+.hero-tag{font-family:var(--mono);font-size:0.7em;color:var(--teal);border:1px solid rgba(56,189,170,0.3);padding:4px 12px;border-radius:4px;display:inline-block;margin-bottom:16px;letter-spacing:1px;background:rgba(56,189,170,0.05);}
+.hero h1{font-family:var(--head);font-size:2.6em;font-weight:800;color:#e6edf3;line-height:1.1;margin-bottom:12px;}
+.hero h1 span{color:var(--teal);}
+.hero-sub{font-size:0.92em;color:var(--muted);max-width:640px;line-height:1.8;margin-bottom:20px;}
+.hero-stats{display:flex;gap:24px;flex-wrap:wrap;}
+.hstat{text-align:center;}
+.hstat-val{font-family:var(--head);font-size:1.8em;font-weight:800;}
+.hstat-label{font-size:0.72em;color:var(--muted);font-family:var(--mono);}
+
+.section{margin-bottom:60px;scroll-margin-top:30px;}
+.sec-header{display:flex;align-items:center;gap:12px;margin-bottom:22px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.sec-num{font-family:var(--mono);font-size:0.7em;font-weight:600;color:var(--teal);background:rgba(56,189,170,0.08);border:1px solid rgba(56,189,170,0.25);padding:3px 10px;border-radius:4px;}
+.sec-header h2{font-family:var(--head);font-size:1.4em;font-weight:700;color:#e6edf3;}
+
+/* LEGEND */
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px;}
+.leg{display:flex;align-items:center;gap:7px;font-size:0.78em;color:var(--muted);}
+.leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+.ld-green{background:var(--green);}
+.ld-orange{background:var(--orange);}
+.ld-red{background:var(--red);}
+.ld-purple{background:var(--purple);}
+
+/* ATTACK CARDS */
+.attack-grid{display:flex;flex-direction:column;gap:12px;}
+.attack-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color 0.2s;}
+.attack-card:hover{border-color:rgba(56,189,170,0.3);}
+.ac-header{display:flex;align-items:center;gap:0;cursor:pointer;}
+.ac-status{width:6px;align-self:stretch;flex-shrink:0;}
+.ac-status.full{background:var(--green);}
+.ac-status.partial{background:var(--orange);}
+.ac-status.none{background:var(--red);}
+.ac-status.improved{background:var(--purple);}
+.ac-main{display:flex;align-items:center;gap:14px;padding:14px 18px;flex:1;}
+.ac-num{font-family:var(--mono);font-size:0.68em;color:var(--muted2);flex-shrink:0;width:28px;}
+.ac-icon{font-size:1.3em;flex-shrink:0;}
+.ac-title{font-family:var(--head);font-size:0.92em;font-weight:700;color:#e6edf3;flex:1;}
+.ac-badge{font-family:var(--mono);font-size:0.64em;padding:3px 9px;border-radius:4px;font-weight:600;white-space:nowrap;flex-shrink:0;}
+.ab-full{background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.3);color:var(--green);}
+.ab-partial{background:rgba(240,136,62,0.12);border:1px solid rgba(240,136,62,0.3);color:var(--orange);}
+.ab-none{background:rgba(248,81,73,0.12);border:1px solid rgba(248,81,73,0.3);color:var(--red);}
+.ab-improved{background:rgba(163,113,247,0.12);border:1px solid rgba(163,113,247,0.3);color:var(--purple);}
+.ac-chevron{color:var(--muted2);font-size:0.8em;padding-right:16px;transition:transform 0.2s;}
+.ac-chevron.open{transform:rotate(90deg);}
+
+.ac-body{display:none;padding:0 18px 18px 18px;border-top:1px solid var(--border);}
+.ac-body.show{display:block;}
+.ac-body-inner{padding-top:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.ac-section{font-size:0.8em;}
+.ac-section-title{font-family:var(--mono);font-size:0.68em;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);margin-bottom:6px;}
+.ac-section-body{color:var(--text);line-height:1.7;font-size:0.97em;}
+.ac-section-body li{margin-left:14px;margin-bottom:3px;}
+.ac-improve{background:rgba(163,113,247,0.06);border:1px solid rgba(163,113,247,0.2);border-radius:6px;padding:10px 14px;margin-top:12px;font-size:0.8em;color:var(--muted);grid-column:1/-1;}
+.ac-improve strong{color:var(--purple);}
+
+/* SUMMARY TABLE */
+.sum-table{width:100%;border-collapse:collapse;font-size:0.82em;}
+.sum-table th{font-family:var(--mono);font-size:0.68em;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;background:rgba(56,189,170,0.03);}
+.sum-table td{padding:9px 12px;border-bottom:1px solid rgba(48,60,80,0.5);vertical-align:middle;}
+.sum-table tr:last-child td{border-bottom:none;}
+.sum-table tr:hover td{background:rgba(56,189,170,0.02);}
+.st-name{font-weight:600;color:#e6edf3;}
+.st-mono{font-family:var(--mono);font-size:0.88em;color:var(--muted);}
+
+.dot-ind{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;}
+.di-green{background:var(--green);}
+.di-orange{background:var(--orange);}
+.di-red{background:var(--red);}
+.di-purple{background:var(--purple);}
+
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin-bottom:16px;}
+.panel-title{font-family:var(--mono);font-size:0.7em;font-weight:600;color:var(--teal);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+
+.score-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+.score-box{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center;}
+.sb-val{font-family:var(--head);font-size:2em;font-weight:800;margin-bottom:4px;}
+.sb-label{font-family:var(--mono);font-size:0.62em;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
+
+p{color:var(--text);margin-bottom:12px;font-size:0.9em;}
+
+@media print{
+  #sidebar,#toolbar,#backtop,#prog{display:none!important;}
+  .main{margin-left:0;padding:20px;}
+  .ac-body{display:block!important;}
+}
+</style>
+</head>
+<body>
+<div id="prog"></div>
+
+<nav id="sidebar">
+  <div class="sb-logo">WAZUH AI-SOC<span class="sb-sub">Attack Coverage Matrix</span></div>
+  <div class="sb-label">Navigation</div>
+  <a class="sb-link active" onclick="goto('overview')">◈ Overview</a>
+  <a class="sb-link" onclick="goto('network')">◈ Network Attacks</a>
+  <a class="sb-link" onclick="goto('endpoint')">◈ Endpoint Attacks</a>
+  <a class="sb-link" onclick="goto('insider')">◈ Insider Threats</a>
+  <a class="sb-link" onclick="goto('advanced')">◈ Advanced Threats</a>
+  <a class="sb-link" onclick="goto('summary')">◈ Summary Table</a>
+  <a class="sb-link" onclick="goto('roadmap')">◈ Improvement Roadmap</a>
+</nav>
+
+<div id="toolbar">
+  <button class="tbtn" onclick="window.print()">⬇ Export PDF</button>
+  <button class="tbtn" onclick="expandAll()">⊞ Expand All</button>
+</div>
+<button id="backtop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<div class="main">
+
+  <!-- HERO -->
+  <div class="hero" id="overview">
+    <div class="hero-tag">ARCHITECTURE COVERAGE REPORT · 2026</div>
+    <h1>Attack Coverage<br><span>Matrix</span></h1>
+    <p class="hero-sub">Complete analysis of what attacks the Wazuh AI-SOC architecture can detect, handle, partially handle, or cannot currently detect — with reasons and improvement paths for each.</p>
+    <div class="hero-stats">
+      <div class="hstat"><div class="hstat-val" style="color:var(--green)">8</div><div class="hstat-label">Fully Detected</div></div>
+      <div class="hstat"><div class="hstat-val" style="color:var(--orange)">6</div><div class="hstat-label">Partial Detection</div></div>
+      <div class="hstat"><div class="hstat-val" style="color:var(--red)">5</div><div class="hstat-label">Not Detected</div></div>
+      <div class="hstat"><div class="hstat-val" style="color:var(--purple)">4</div><div class="hstat-label">Improvable</div></div>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="leg"><div class="leg-dot ld-green"></div> Fully detected — pipeline handles it end to end</div>
+    <div class="leg"><div class="leg-dot ld-orange"></div> Partial — Wazuh sees it but coverage has gaps</div>
+    <div class="leg"><div class="leg-dot ld-red"></div> Not detected — architecture gap, cannot detect currently</div>
+    <div class="leg"><div class="leg-dot ld-purple"></div> Improvable — not detected now but fixable with specific changes</div>
+  </div>
+
+  <!-- NETWORK ATTACKS -->
+  <div class="section" id="network">
+    <div class="sec-header"><span class="sec-num">01</span><h2>Network Attacks</h2></div>
+    <div class="attack-grid">
+
+      <!-- SSH Brute Force -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status full"></div>
+          <div class="ac-main">
+            <span class="ac-num">01</span>
+            <span class="ac-icon">🔨</span>
+            <span class="ac-title">SSH Brute Force</span>
+            <span class="ac-badge ab-full">✓ FULLY DETECTED</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Attacker tries thousands of username/password combinations on SSH port 22 to gain access. Like trying every key on a keyring until one works.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">How we detect it</div>
+              <div class="ac-section-body">Wazuh rule 5716 fires on each failed login. n8n counts them — at 15+ triggers auto-block. iptables blocks the IP. Telegram confirmed message sent.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Pipeline response</div>
+              <div class="ac-section-body">MONITOR → INVESTIGATE → BLOCK_IP → ✅ IP BLOCKED CONFIRMED. Tested with real Hydra attack. Fully verified.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Port Scan -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status full"></div>
+          <div class="ac-main">
+            <span class="ac-num">02</span>
+            <span class="ac-icon">🔍</span>
+            <span class="ac-title">Port Scanning / Network Reconnaissance</span>
+            <span class="ac-badge ab-full">✓ FULLY DETECTED</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Attacker scans all ports to find open services — like knocking on every door in a building to see which ones open. Usually the first step before any real attack.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">How we detect it</div>
+              <div class="ac-section-body">Wazuh rule 1002 detects multiple connection attempts to different ports. AI classifies as port_scan, MITRE T1046. Pipeline escalates based on velocity.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Pipeline response</div>
+              <div class="ac-section-body">Low velocity → MONITOR. High velocity (Nmap aggressive scan) → INVESTIGATE → eventually BLOCK_IP. Works after If node threshold fix (>= 5).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FTP Brute Force -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status full"></div>
+          <div class="ac-main">
+            <span class="ac-num">03</span>
+            <span class="ac-icon">📁</span>
+            <span class="ac-title">FTP Brute Force</span>
+            <span class="ac-badge ab-full">✓ FULLY DETECTED</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Same as SSH brute force but targeting FTP file transfer port. Attacker tries to get into the file server to steal or modify files.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">How we detect it</div>
+              <div class="ac-section-body">Wazuh has built-in FTP authentication failure rules. Same pipeline — failed logins counted, IP blocked after threshold reached.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Pipeline response</div>
+              <div class="ac-section-body">Same MONITOR → BLOCK_IP escalation as SSH. MITRE T1110. Needs FTP service running on the monitored machine.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SQL Injection -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status partial"></div>
+          <div class="ac-main">
+            <span class="ac-num">04</span>
+            <span class="ac-icon">💉</span>
+            <span class="ac-title">SQL Injection</span>
+            <span class="ac-badge ab-partial">⚠ PARTIAL</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Attacker injects malicious SQL code into a web form to steal or delete database data. Like tricking a form into running commands instead of storing data.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">How we detect it</div>
+              <div class="ac-section-body">Wazuh rule 31103 detects SQL injection patterns in web logs. AI correctly classified as sql_injection_attempt, MITRE T1190 in testing.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Gap</div>
+              <div class="ac-section-body">Only detects if a web application is running on the monitored server AND web server logs are configured in Wazuh. No web app currently running on SIEM-SERVER.</div>
+            </div>
+            <div class="ac-improve"><strong>To improve:</strong> Deploy a web application on the monitored server, configure Apache/Nginx log monitoring in Wazuh ossec.conf.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DDoS -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status none"></div>
+          <div class="ac-main">
+            <span class="ac-num">05</span>
+            <span class="ac-icon">💥</span>
+            <span class="ac-title">DDoS — Distributed Denial of Service</span>
+            <span class="ac-badge ab-none">✗ NOT DETECTED</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Thousands of machines flood your server with requests simultaneously to make it crash. Like 10,000 people calling the same phone number at once — line goes dead.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Why not detected</div>
+              <div class="ac-section-body">Tailscale blocks external traffic completely. A DDoS from the public internet cannot reach your server. No external IP can connect. This attack is architecturally impossible on your network.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Real risk</div>
+              <div class="ac-section-body">If Tailscale itself goes down or gets DDoS'd, your network connectivity breaks. But that's Tailscale's problem to handle, not yours.</div>
+            </div>
+            <div class="ac-improve"><strong>Note:</strong> Not detected but also not possible on your architecture. This is a non-issue for your threat model.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ENDPOINT ATTACKS -->
+  <div class="section" id="endpoint">
+    <div class="sec-header"><span class="sec-num">02</span><h2>Endpoint / Host Attacks</h2></div>
+    <div class="attack-grid">
+
+      <!-- Process Injection / Malware -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status full"></div>
+          <div class="ac-main">
+            <span class="ac-num">06</span>
+            <span class="ac-icon">💀</span>
+            <span class="ac-title">Malware / Process Injection</span>
+            <span class="ac-badge ab-full">✓ FULLY DETECTED</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Malicious code injected into a running process — attacker hides inside a legitimate program like svchost.exe. The malware runs under a trusted process so security tools miss it.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">How we detect it</div>
+              <div class="ac-section-body">Wazuh rule 87105 detects suspicious child processes and memory injection. AI receives it → Rule 6 malware override fires → isolate_host immediately regardless of count.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Pipeline response</div>
+              <div class="ac-section-body">ISOLATE_HOST triggered. blocker.py sets iptables policy to DROP all. Only Wazuh manager stays connected. Telegram 🔒 HOST ISOLATED. Tested and verified.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ransomware -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status partial"></div>
+          <div class="ac-main">
+            <span class="ac-num">07</span>
+            <span class="ac-icon">🔐</span>
+            <span class="ac-title">Ransomware</span>
+            <span class="ac-badge ab-partial">⚠ PARTIAL</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Malware that encrypts all your files and demands payment to decrypt them. Attacker locks your data and holds it hostage. Most damaging attack for businesses.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">How we detect it</div>
+              <div class="ac-section-body">Wazuh rule 62300 detects mass file encryption patterns. AI classifies as file_encryption, MITRE T1486. Decision Engine rule-ID override triggers ISOLATE_HOST via rule 62300.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Gap</div>
+              <div class="ac-section-body">Detection happens AFTER encryption starts. By the time Wazuh sees it, some files are already encrypted. No pre-emptive detection. No backup verification in pipeline.</div>
+            </div>
+            <div class="ac-improve"><strong>To improve:</strong> Add file integrity monitoring (FIM) in Wazuh for critical directories. Alert on bulk file modification BEFORE encryption completes. Integrate backup verification.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Privilege Escalation -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status full"></div>
+          <div class="ac-main">
+            <span class="ac-num">08</span>
+            <span class="ac-icon">⬆️</span>
+            <span class="ac-title">Privilege Escalation</span>
+            <span class="ac-badge ab-full">✓ FULLY DETECTED</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Attacker gains higher permissions than they should have. Like a regular employee accessing the CEO's files. They exploit misconfigurations or bugs to become admin/root.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">How we detect it</div>
+              <div class="ac-section-body">Wazuh rule 5402 detects unauthorized sudo usage. AI correctly classifies as unauthorized_sudo_usage, MITRE T1548.003. Pipeline escalates appropriately.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Pipeline response</div>
+              <div class="ac-section-body">Depends on count. First occurrence → MONITOR. Repeated → INVESTIGATE → analyst reviews in TheHive. Tested in accuracy evaluation — correct classification.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rootkit -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status full"></div>
+          <div class="ac-main">
+            <span class="ac-num">09</span>
+            <span class="ac-icon">🕳️</span>
+            <span class="ac-title">Rootkit Detection</span>
+            <span class="ac-badge ab-full">✓ FULLY DETECTED</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Deep-level malware that hides itself from the operating system. Like a burglar who also hides the security camera footage. Extremely dangerous — hard to find.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">How we detect it</div>
+              <div class="ac-section-body">Wazuh rules 510, 511, 533 — built-in rootkit detection scans. Decision Engine ISOLATE_RULE_IDS includes all three. Immediate isolate_host regardless of count.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Pipeline response</div>
+              <div class="ac-section-body">Immediate ISOLATE_HOST. No count threshold needed. Rule ID match is authoritative. Host isolated, Wazuh manager stays connected for forensics.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Persistence -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status partial"></div>
+          <div class="ac-main">
+            <span class="ac-num">10</span>
+            <span class="ac-icon">🔗</span>
+            <span class="ac-title">Persistence Mechanisms</span>
+            <span class="ac-badge ab-partial">⚠ PARTIAL</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Attacker installs backdoors so they survive reboots. Creating scheduled tasks, adding startup scripts, creating new admin users, adding SSH keys. They want to come back even after you restart.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">How we detect it</div>
+              <div class="ac-section-body">Wazuh detects: new user creation (rule 5501), cron job changes, SSH authorized_keys modification. Linux persistence is covered. Windows persistence has gaps.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Gap</div>
+              <div class="ac-section-body">Windows registry run keys, scheduled tasks, WMI persistence — not detected without Windows agent on employee machines. Windows persistence is completely blind currently.</div>
+            </div>
+            <div class="ac-improve"><strong>To improve:</strong> Install Wazuh agent on Windows machines. Enable Windows registry monitoring and scheduled task monitoring in Wazuh configuration.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- INSIDER THREATS -->
+  <div class="section" id="insider">
+    <div class="sec-header"><span class="sec-num">03</span><h2>Insider & Social Engineering Threats</h2></div>
+    <div class="attack-grid">
+
+      <!-- Insider Threat -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status full"></div>
+          <div class="ac-main">
+            <span class="ac-num">11</span>
+            <span class="ac-icon">👤</span>
+            <span class="ac-title">Insider Threat — Authorized User Doing Malicious Things</span>
+            <span class="ac-badge ab-full">✓ FULLY DETECTED</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Employee intentionally or accidentally causes damage — accessing files they shouldn't, exporting data, sabotaging systems. The attacker already has legitimate access.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">How we detect it</div>
+              <div class="ac-section-body">Wazuh detects access outside business hours, sensitive file access, unusual commands. AI recognizes Tailscale IPs and treats them cautiously — uses count and velocity to escalate.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Pipeline response</div>
+              <div class="ac-section-body">AI correctly returns investigate action. Tested with john.smith accessing files outside hours — correct classification, MITRE T1078. Escalates to analyst in TheHive.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phishing -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status none"></div>
+          <div class="ac-main">
+            <span class="ac-num">12</span>
+            <span class="ac-icon">🎣</span>
+            <span class="ac-title">Phishing — Employee Clicks Malicious Link/Attachment</span>
+            <span class="ac-badge ab-none">✗ NOT DETECTED</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Attacker sends a fake email pretending to be a trusted source. Employee clicks a link or opens an attachment. Malware installs silently. This is how 80-90% of enterprise breaches start.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Why not detected</div>
+              <div class="ac-section-body">Phishing happens at email/browser level on employee machines. Wazuh on the Linux server cannot see what happens on employee laptops. No endpoint agent on employee Windows machines currently.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">What we CAN detect</div>
+              <div class="ac-section-body">The AFTERMATH of phishing — when malware starts acting: lateral movement, suspicious processes, C2 communication. We see it after execution, not at click time.</div>
+            </div>
+            <div class="ac-improve"><strong>To improve:</strong> Install Wazuh agent on all employee Windows machines. Wazuh detects: Office macros spawning PowerShell, browser spawning unexpected child processes, encoded PowerShell execution.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compromised Employee Device -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status improved"></div>
+          <div class="ac-main">
+            <span class="ac-num">13</span>
+            <span class="ac-icon">💻</span>
+            <span class="ac-title">Hijacked Employee Device — Attacker Operating Inside Tailscale</span>
+            <span class="ac-badge ab-improved">↑ IMPROVABLE</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">The most realistic threat to your architecture. Attacker compromises an employee laptop via phishing. Now they operate from INSIDE Tailscale — they can reach every machine on the network.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Currently detected</div>
+              <div class="ac-section-body">When the attacker moves laterally — SSH attempts from internal Tailscale IP to SIEM-SERVER are detected. AI handles Tailscale IPs correctly. Escalates based on count.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Gap</div>
+              <div class="ac-section-body">Everything happening ON the compromised employee machine is invisible. Credential dumping, recon, C2 communication — all blind until attacker moves to another machine.</div>
+            </div>
+            <div class="ac-improve"><strong>To improve:</strong> Wazuh agent on WORKSTATION-01. This single change gives you visibility into the most likely real attack scenario on your network.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Social Engineering -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status none"></div>
+          <div class="ac-main">
+            <span class="ac-num">14</span>
+            <span class="ac-icon">🗣️</span>
+            <span class="ac-title">Social Engineering — Vishing, Pretexting</span>
+            <span class="ac-badge ab-none">✗ NOT DETECTED</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Attacker calls an employee pretending to be IT support, tricks them into giving passwords or installing software. Pure human manipulation — no technical exploit needed.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Why not detected</div>
+              <div class="ac-section-body">This is a human problem, not a technical one. No SIEM in the world can detect a phone call. The detection only happens after the attacker uses the stolen credentials.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">What we detect after</div>
+              <div class="ac-section-body">When stolen credentials are used — login from unusual IP, access at unusual time, accessing sensitive files. AI detects the behaviour, not the method.</div>
+            </div>
+            <div class="ac-improve"><strong>Note:</strong> No technical fix possible. Requires employee security awareness training. Outside the scope of a SIEM/SOC tool.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ADVANCED THREATS -->
+  <div class="section" id="advanced">
+    <div class="sec-header"><span class="sec-num">04</span><h2>Advanced & Sophisticated Attacks</h2></div>
+    <div class="attack-grid">
+
+      <!-- Lateral Movement -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status partial"></div>
+          <div class="ac-main">
+            <span class="ac-num">15</span>
+            <span class="ac-icon">↔️</span>
+            <span class="ac-title">Lateral Movement — Spreading Across Network</span>
+            <span class="ac-badge ab-partial">⚠ PARTIAL</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Once inside one machine, attacker moves to other machines on the network. Like a burglar who breaks into one apartment and then tries every other door in the building.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">How we detect it</div>
+              <div class="ac-section-body">SSH attempts from internal Tailscale IPs to SIEM-SERVER are detected. Wazuh sees the connection attempts. AI classifies the pattern. MITRE T1021 via MITRE map fix.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Gap</div>
+              <div class="ac-section-body">Lateral movement between employee machines (WORKSTATION-01 → LOQ → SERVER-01) is completely invisible unless those machines have Wazuh agents. We only see it when it hits the Linux server.</div>
+            </div>
+            <div class="ac-improve"><strong>To improve:</strong> Wazuh agents on all Tailscale machines. Then lateral movement between any two machines is visible and creates alerts.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Exfiltration -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status partial"></div>
+          <div class="ac-main">
+            <span class="ac-num">16</span>
+            <span class="ac-icon">📤</span>
+            <span class="ac-title">Data Exfiltration — Stealing Company Data</span>
+            <span class="ac-badge ab-partial">⚠ PARTIAL</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Attacker copies company data to external servers. Employee records, financial data, source code, passwords. The theft is silent — files are copied, not deleted.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">How we detect it</div>
+              <div class="ac-section-body">Wazuh rule 87200 detects large outbound data transfers. AI correctly classified as data_exfiltration_attempt, MITRE T1041 in testing. Pipeline escalates to investigate.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Gap</div>
+              <div class="ac-section-body">DNS tunneling exfiltration is invisible — attacker hides data in DNS queries which look like normal traffic. Also misses exfiltration from employee machines without agents.</div>
+            </div>
+            <div class="ac-improve"><strong>To improve:</strong> Enable Wazuh network monitoring rules. Add DNS query monitoring. Set baseline for normal outbound traffic volume and alert on deviations.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- C2 Communication -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status full"></div>
+          <div class="ac-main">
+            <span class="ac-num">17</span>
+            <span class="ac-icon">📡</span>
+            <span class="ac-title">C2 — Command and Control Communication</span>
+            <span class="ac-badge ab-full">✓ FULLY DETECTED</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Malware on a machine calls home to the attacker's server to receive instructions. Like a spy reporting back to headquarters. The attacker remotely controls the infected machine.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">How we detect it</div>
+              <div class="ac-section-body">Wazuh rules 87106, 87110 detect C2 beaconing patterns. Decision Engine ISOLATE_RULE_IDS covers both. AI secondary check also catches c2_beacon threat_type. ISOLATE_HOST fires immediately.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Pipeline response</div>
+              <div class="ac-section-body">Immediate ISOLATE_HOST. Machine cut off from network. Only Wazuh manager stays connected. Blocks the attacker from continuing to control the machine.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Credential Dumping -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status improved"></div>
+          <div class="ac-main">
+            <span class="ac-num">18</span>
+            <span class="ac-icon">🔑</span>
+            <span class="ac-title">Credential Dumping — Stealing Passwords from Memory</span>
+            <span class="ac-badge ab-improved">↑ IMPROVABLE</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Attacker runs tools like Mimikatz to extract passwords stored in Windows memory. Gets all cached credentials in seconds — email passwords, domain passwords, everything.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Currently</div>
+              <div class="ac-section-body">ISOLATE_DESC_KEYWORDS includes 'mimikatz' and 'credential dump'. If Wazuh detects these keywords in a rule description, ISOLATE_HOST fires immediately.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Gap</div>
+              <div class="ac-section-body">Wazuh on Linux server cannot see Mimikatz running on a Windows employee machine without a Windows agent installed there.</div>
+            </div>
+            <div class="ac-improve"><strong>To improve:</strong> Wazuh Windows agent + Sysmon integration. Sysmon logs every process execution — Mimikatz activity is immediately visible.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Zero Day -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status none"></div>
+          <div class="ac-main">
+            <span class="ac-num">19</span>
+            <span class="ac-icon">0️⃣</span>
+            <span class="ac-title">Zero-Day Exploits — Unknown Vulnerabilities</span>
+            <span class="ac-badge ab-none">✗ NOT DETECTED</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Attacker exploits a software vulnerability that nobody knows about yet — no patch exists. The most sophisticated attacks use zero-days. Nation-state level attack capability.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Why not detected</div>
+              <div class="ac-section-body">By definition, no signature exists for an unknown vulnerability. Rule-based detection systems cannot detect what they don't know about. Even enterprise SOCs struggle with this.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">What we detect after</div>
+              <div class="ac-section-body">The BEHAVIOUR after exploitation — privilege escalation, lateral movement, persistence, C2 — all of these are detected by your pipeline even if the initial exploit method is unknown.</div>
+            </div>
+            <div class="ac-improve"><strong>Note:</strong> No rule-based system detects zero-days. Requires ML-based anomaly detection (your L3 roadmap). Current detection of post-exploitation behaviour is the best realistic defence.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Supply Chain -->
+      <div class="attack-card">
+        <div class="ac-header" onclick="toggle(this)">
+          <div class="ac-status none"></div>
+          <div class="ac-main">
+            <span class="ac-num">20</span>
+            <span class="ac-icon">⛓️</span>
+            <span class="ac-title">Supply Chain Attack — Compromised Software Update</span>
+            <span class="ac-badge ab-none">✗ NOT DETECTED</span>
+          </div>
+          <span class="ac-chevron">▶</span>
+        </div>
+        <div class="ac-body">
+          <div class="ac-body-inner">
+            <div class="ac-section">
+              <div class="ac-section-title">What it is</div>
+              <div class="ac-section-body">Attacker compromises a software vendor's update system. When employees update their software, they unknowingly install malware. SolarWinds attack was this — affected 18,000 companies.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">Why not detected</div>
+              <div class="ac-section-body">The malware arrives as a legitimate signed software update. Looks completely normal. No brute force, no scanning, no obvious indicators. Extremely sophisticated.</div>
+            </div>
+            <div class="ac-section">
+              <div class="ac-section-title">What we detect after</div>
+              <div class="ac-section-body">Once the malware activates — C2 beaconing, lateral movement, data exfiltration — your pipeline detects the resulting behaviour. The initial infection method is invisible.</div>
+            </div>
+            <div class="ac-improve"><strong>Note:</strong> Beyond the scope of a SIEM to prevent. Requires software composition analysis and vendor risk management at organisational level.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SUMMARY TABLE -->
+  <div class="section" id="summary">
+    <div class="sec-header"><span class="sec-num">05</span><h2>Complete Summary Table</h2></div>
+
+    <div class="score-row">
+      <div class="score-box" style="border-top:2px solid var(--green)">
+        <div class="sb-val" style="color:var(--green)">8</div>
+        <div class="sb-label">Fully Detected</div>
+      </div>
+      <div class="score-box" style="border-top:2px solid var(--orange)">
+        <div class="sb-val" style="color:var(--orange)">6</div>
+        <div class="sb-label">Partial</div>
+      </div>
+      <div class="score-box" style="border-top:2px solid var(--red)">
+        <div class="sb-val" style="color:var(--red)">4</div>
+        <div class="sb-label">Not Detected</div>
+      </div>
+      <div class="score-box" style="border-top:2px solid var(--purple)">
+        <div class="sb-val" style="color:var(--purple)">2</div>
+        <div class="sb-label">Improvable</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">All 20 Attacks At a Glance</div>
+      <table class="sum-table">
+        <thead>
+          <tr><th>#</th><th>Attack</th><th>Simple Meaning</th><th>Status</th><th>Fix Required</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="st-mono">01</td>
+            <td class="st-name">SSH Brute Force</td>
+            <td style="color:var(--muted);font-size:0.85em;">Guess password by trying thousands of combinations</td>
+            <td><span style="color:var(--green)"><span class="dot-ind di-green"></span>Full</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">None</td>
+          </tr>
+          <tr>
+            <td class="st-mono">02</td>
+            <td class="st-name">Port Scan</td>
+            <td style="color:var(--muted);font-size:0.85em;">Map the network to find open services</td>
+            <td><span style="color:var(--green)"><span class="dot-ind di-green"></span>Full</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">None</td>
+          </tr>
+          <tr>
+            <td class="st-mono">03</td>
+            <td class="st-name">FTP Brute Force</td>
+            <td style="color:var(--muted);font-size:0.85em;">Guess password on file transfer service</td>
+            <td><span style="color:var(--green)"><span class="dot-ind di-green"></span>Full</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">FTP service must be running</td>
+          </tr>
+          <tr>
+            <td class="st-mono">04</td>
+            <td class="st-name">SQL Injection</td>
+            <td style="color:var(--muted);font-size:0.85em;">Inject code into web forms to steal database</td>
+            <td><span style="color:var(--orange)"><span class="dot-ind di-orange"></span>Partial</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">Web app + log monitoring needed</td>
+          </tr>
+          <tr>
+            <td class="st-mono">05</td>
+            <td class="st-name">DDoS</td>
+            <td style="color:var(--muted);font-size:0.85em;">Flood server with traffic to crash it</td>
+            <td><span style="color:var(--red)"><span class="dot-ind di-red"></span>N/A</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">Impossible on Tailscale network</td>
+          </tr>
+          <tr>
+            <td class="st-mono">06</td>
+            <td class="st-name">Malware / Process Injection</td>
+            <td style="color:var(--muted);font-size:0.85em;">Hide malicious code inside trusted process</td>
+            <td><span style="color:var(--green)"><span class="dot-ind di-green"></span>Full</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">None — ISOLATE_HOST verified</td>
+          </tr>
+          <tr>
+            <td class="st-mono">07</td>
+            <td class="st-name">Ransomware</td>
+            <td style="color:var(--muted);font-size:0.85em;">Encrypt all files and demand ransom</td>
+            <td><span style="color:var(--orange)"><span class="dot-ind di-orange"></span>Partial</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">Add FIM monitoring on critical dirs</td>
+          </tr>
+          <tr>
+            <td class="st-mono">08</td>
+            <td class="st-name">Privilege Escalation</td>
+            <td style="color:var(--muted);font-size:0.85em;">Gain admin rights you shouldn't have</td>
+            <td><span style="color:var(--green)"><span class="dot-ind di-green"></span>Full</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">None</td>
+          </tr>
+          <tr>
+            <td class="st-mono">09</td>
+            <td class="st-name">Rootkit</td>
+            <td style="color:var(--muted);font-size:0.85em;">Deep malware that hides itself from OS</td>
+            <td><span style="color:var(--green)"><span class="dot-ind di-green"></span>Full</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">None — immediate isolate</td>
+          </tr>
+          <tr>
+            <td class="st-mono">10</td>
+            <td class="st-name">Persistence</td>
+            <td style="color:var(--muted);font-size:0.85em;">Install backdoor to survive reboots</td>
+            <td><span style="color:var(--orange)"><span class="dot-ind di-orange"></span>Partial</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">Windows agent for registry/tasks</td>
+          </tr>
+          <tr>
+            <td class="st-mono">11</td>
+            <td class="st-name">Insider Threat</td>
+            <td style="color:var(--muted);font-size:0.85em;">Authorised employee doing malicious things</td>
+            <td><span style="color:var(--green)"><span class="dot-ind di-green"></span>Full</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">None — tested and verified</td>
+          </tr>
+          <tr>
+            <td class="st-mono">12</td>
+            <td class="st-name">Phishing</td>
+            <td style="color:var(--muted);font-size:0.85em;">Fake email tricks employee into clicking malware</td>
+            <td><span style="color:var(--red)"><span class="dot-ind di-red"></span>Not detected</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">Windows agent on employee machines</td>
+          </tr>
+          <tr>
+            <td class="st-mono">13</td>
+            <td class="st-name">Hijacked Employee Device</td>
+            <td style="color:var(--muted);font-size:0.85em;">Attacker operates from inside Tailscale via compromised laptop</td>
+            <td><span style="color:var(--purple)"><span class="dot-ind di-purple"></span>Improvable</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">Wazuh agent on WORKSTATION-01 — single fix</td>
+          </tr>
+          <tr>
+            <td class="st-mono">14</td>
+            <td class="st-name">Social Engineering</td>
+            <td style="color:var(--muted);font-size:0.85em;">Trick employee via phone/email into giving access</td>
+            <td><span style="color:var(--red)"><span class="dot-ind di-red"></span>Not detected</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">Not technical — security training needed</td>
+          </tr>
+          <tr>
+            <td class="st-mono">15</td>
+            <td class="st-name">Lateral Movement</td>
+            <td style="color:var(--muted);font-size:0.85em;">Spread from one machine to others on network</td>
+            <td><span style="color:var(--orange)"><span class="dot-ind di-orange"></span>Partial</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">Agents on all Tailscale machines</td>
+          </tr>
+          <tr>
+            <td class="st-mono">16</td>
+            <td class="st-name">Data Exfiltration</td>
+            <td style="color:var(--muted);font-size:0.85em;">Steal and send company data to attacker server</td>
+            <td><span style="color:var(--orange)"><span class="dot-ind di-orange"></span>Partial</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">DNS monitoring, employee machine agents</td>
+          </tr>
+          <tr>
+            <td class="st-mono">17</td>
+            <td class="st-name">C2 Communication</td>
+            <td style="color:var(--muted);font-size:0.85em;">Malware calls home to attacker for instructions</td>
+            <td><span style="color:var(--green)"><span class="dot-ind di-green"></span>Full</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">None — immediate isolate</td>
+          </tr>
+          <tr>
+            <td class="st-mono">18</td>
+            <td class="st-name">Credential Dumping</td>
+            <td style="color:var(--muted);font-size:0.85em;">Extract saved passwords from memory (Mimikatz)</td>
+            <td><span style="color:var(--purple)"><span class="dot-ind di-purple"></span>Improvable</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">Wazuh Windows agent + Sysmon</td>
+          </tr>
+          <tr>
+            <td class="st-mono">19</td>
+            <td class="st-name">Zero-Day Exploit</td>
+            <td style="color:var(--muted);font-size:0.85em;">Attack using unknown vulnerability with no patch</td>
+            <td><span style="color:var(--red)"><span class="dot-ind di-red"></span>Not detected</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">Requires ML anomaly detection (L3 roadmap)</td>
+          </tr>
+          <tr>
+            <td class="st-mono">20</td>
+            <td class="st-name">Supply Chain Attack</td>
+            <td style="color:var(--muted);font-size:0.85em;">Malware hidden in legitimate software update</td>
+            <td><span style="color:var(--red)"><span class="dot-ind di-red"></span>Not detected</span></td>
+            <td style="color:var(--muted2);font-size:0.85em;">Vendor risk management — outside SIEM scope</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ROADMAP -->
+  <div class="section" id="roadmap">
+    <div class="sec-header"><span class="sec-num">06</span><h2>Improvement Roadmap</h2></div>
+
+    <div class="panel">
+      <div class="panel-title">Single Biggest Improvement — One Change, Maximum Impact</div>
+      <p style="font-size:0.88em;">Installing a Wazuh agent on <strong>WORKSTATION-01</strong> (the employee Windows machine) alone would improve detection from 8 fully detected to 12+ fully detected. It closes the gap on: phishing aftermath, credential dumping, persistence, lateral movement origin, hijacked device activity. This is the highest ROI change available.</p>
+      <div style="background:rgba(56,189,170,0.06);border:1px solid rgba(56,189,170,0.2);border-radius:6px;padding:14px 18px;margin-top:12px;font-family:var(--mono);font-size:0.78em;color:var(--teal);">
+        Install Wazuh agent on WORKSTATION-01 → covers phishing aftermath, credential dump, persistence, lateral movement origin
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Priority Order</div>
+      <table class="sum-table">
+        <thead><tr><th>Priority</th><th>Action</th><th>Attacks it covers</th><th>Effort</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span style="color:var(--red);font-family:var(--mono);font-size:0.8em;">P1 — NOW</span></td>
+            <td style="color:#e6edf3;font-weight:600;">Wazuh agent on WORKSTATION-01</td>
+            <td style="color:var(--muted);font-size:0.85em;">Phishing aftermath, credential dump, persistence, hijacked device, lateral movement</td>
+            <td style="color:var(--green);font-size:0.85em;">1 evening</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--orange);font-family:var(--mono);font-size:0.8em;">P2 — NEXT</span></td>
+            <td style="color:#e6edf3;font-weight:600;">TheHive integration in n8n</td>
+            <td style="color:var(--muted);font-size:0.85em;">Case management, TP/FP tracking, analyst workflow</td>
+            <td style="color:var(--green);font-size:0.85em;">2–3 hours</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--yellow);font-family:var(--mono);font-size:0.8em;">P3 — SOON</span></td>
+            <td style="color:#e6edf3;font-weight:600;">File Integrity Monitoring (FIM)</td>
+            <td style="color:var(--muted);font-size:0.85em;">Ransomware early detection, persistence, config changes</td>
+            <td style="color:var(--orange);font-size:0.85em;">1 evening</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--teal);font-family:var(--mono);font-size:0.8em;">P4 — LATER</span></td>
+            <td style="color:#e6edf3;font-weight:600;">Sysmon on Windows agents</td>
+            <td style="color:var(--muted);font-size:0.85em;">Process creation, network connections, registry — deep Windows visibility</td>
+            <td style="color:var(--orange);font-size:0.85em;">Half day</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--purple);font-family:var(--mono);font-size:0.8em;">P5 — ROADMAP</span></td>
+            <td style="color:#e6edf3;font-weight:600;">ML anomaly detection (L3)</td>
+            <td style="color:var(--muted);font-size:0.85em;">Zero-day behaviour, unknown attack patterns, baseline deviation</td>
+            <td style="color:var(--red);font-size:0.85em;">Needs 2–3 months data</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:20px;padding:14px 18px;background:rgba(56,189,170,0.04);border:1px solid rgba(56,189,170,0.15);border-radius:8px;font-family:var(--mono);font-size:0.72em;color:var(--muted);">
+      Report generated: March 2026 &nbsp;·&nbsp; Architecture: Wazuh AI-SOC v12.9.10 &nbsp;·&nbsp; Attacks evaluated: 20 &nbsp;·&nbsp; Network: Tailscale mesh
+    </div>
+
+    <div style="margin-top:14px;padding:14px 18px;border-top:1px solid var(--border);font-family:var(--mono);font-size:0.72em;color:var(--muted2);text-align:center;">
+      Author: <span style="color:var(--teal);">Aditya Suresh Acharya</span> &nbsp;·&nbsp; © 2026
+    </div>
+  </div>
+
+</div>
+
+<script>
+window.addEventListener('scroll', () => {
+  const d = document.documentElement;
+  const pct = (d.scrollTop / (d.scrollHeight - d.clientHeight)) * 100;
+  document.getElementById('prog').style.width = pct + '%';
+  document.getElementById('backtop').classList.toggle('show', d.scrollTop > 300);
+});
+
+function toggle(header) {
+  const body = header.parentElement.querySelector('.ac-body');
+  const chev = header.querySelector('.ac-chevron');
+  body.classList.toggle('show');
+  chev.classList.toggle('open');
+}
+
+function goto(id) {
+  document.getElementById(id)?.scrollIntoView({behavior:'smooth'});
+}
+
+function expandAll() {
+  document.querySelectorAll('.ac-body').forEach(b => b.classList.add('show'));
+  document.querySelectorAll('.ac-chevron').forEach(c => c.classList.add('open'));
+}
+</script>
+</body>
+</html>

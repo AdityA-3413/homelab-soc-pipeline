@@ -1,0 +1,5 @@
+#!/bin/sh
+WPYTHON_BIN="framework/python/bin/python3"
+DIR_NAME="$(cd $(dirname $0); pwd -P)"
+WAZUH_PATH="$(cd ${DIR_NAME}/..; pwd)"
+${WAZUH_PATH}/${WPYTHON_BIN} ${DIR_NAME}/custom-webhook.py "$@"

@@ -1,0 +1,31 @@
+<!-- Wazuh SOC Custom Rules -->
+<group name="local,syslog,sshd,">
+  <rule id="100001" level="10">
+    <if_matched_sid>5716</if_matched_sid>
+    <same_source_ip/>
+    <description>SSH brute force - multiple failures from same IP</description>
+    <group>authentication_failures,ssh_brute_force,</group>
+  </rule>
+</group>
+
+<group name="syscheck,ransomware,">
+
+  <rule id="100020" level="12">
+    <if_sid>550,554</if_sid>
+    <field name="file">\.gpg$|\.cpt$|\.locked$|\.enc$|\.crypt$|\.akira$</field>
+    <description>RANSOMWARE: Encrypted file extension detected - T1486</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+  </rule>
+
+  <rule id="100021" level="12">
+    <if_sid>550,554</if_sid>
+    <field name="file">\.cpt$</field>
+    <description>RANSOMWARE: Atomic Red Team T1486 - ccrypt encrypted file detected</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+  </rule>
+
+</group>

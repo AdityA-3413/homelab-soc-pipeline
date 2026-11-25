@@ -1,0 +1,605 @@
+<!--
+  SOC Architecture Diagram — Wazuh AI-SOC
+  Author: Aditya Suresh Acharya
+  © 2026 Aditya Suresh Acharya. All rights reserved unless otherwise licensed.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="author" content="Aditya Suresh Acharya">
+<title>Wazuh AI-SOC — Architecture Diagram</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0d1117;--bg2:#161b22;--bg3:#1c2230;
+  --border:rgba(48,60,80,0.8);
+  --teal:#38bda9;--teal2:rgba(56,189,170,0.12);
+  --green:#3fb950;--green2:rgba(63,185,80,0.12);
+  --orange:#f0883e;--orange2:rgba(240,136,62,0.12);
+  --red:#f85149;--purple:#a371f7;--purple2:rgba(163,113,247,0.12);
+  --yellow:#e3b341;
+  --text:#c9d1d9;--muted:#8b949e;--muted2:#484f58;
+  --mono:'JetBrains Mono',monospace;
+  --head:'Syne',sans-serif;
+  --body:'Inter',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--body);overflow-x:hidden;}
+
+/* BACKGROUND GRID */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;
+  background-image:
+    linear-gradient(rgba(56,189,170,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56,189,170,0.03) 1px, transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(56,189,170,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(163,113,247,0.05) 0%, transparent 40%),
+    radial-gradient(ellipse at 60% 80%, rgba(240,136,62,0.04) 0%, transparent 40%);
+  pointer-events:none;
+}
+
+/* HEADER */
+.header{
+  position:relative;z-index:10;
+  padding:28px 48px 0;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.logo{font-family:var(--head);font-size:0.8em;font-weight:800;
+  letter-spacing:3px;text-transform:uppercase;
+  background:linear-gradient(90deg,var(--teal),var(--orange));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.header-tag{font-family:var(--mono);font-size:0.65em;color:var(--muted);letter-spacing:2px;
+  border:1px solid var(--border);padding:4px 12px;border-radius:4px;}
+
+/* MAIN CANVAS */
+.canvas{
+  position:relative;z-index:1;
+  padding:32px 48px 48px;
+  min-height:calc(100vh - 80px);
+  display:flex;flex-direction:column;gap:0;
+}
+
+/* TITLE */
+.diagram-title{
+  text-align:center;margin-bottom:40px;
+}
+.diagram-title h1{
+  font-family:var(--head);font-size:2.2em;font-weight:800;color:#e6edf3;
+  letter-spacing:-1px;margin-bottom:6px;
+}
+.diagram-title h1 span{color:var(--teal);}
+.diagram-title p{font-family:var(--mono);font-size:0.7em;color:var(--muted);letter-spacing:1px;}
+
+/* DIAGRAM CONTAINER */
+.diagram{
+  display:flex;gap:24px;align-items:stretch;
+  flex:1;
+}
+
+/* ─── LAPTOP CARD (LOQ) ─── */
+.laptop-card{
+  position:relative;
+  background:linear-gradient(135deg,#0d1117 0%,#12191f 100%);
+  border:1px solid rgba(163,113,247,0.4);
+  border-radius:16px;
+  padding:24px;
+  width:260px;
+  flex-shrink:0;
+  box-shadow:0 0 40px rgba(163,113,247,0.08), inset 0 1px 0 rgba(163,113,247,0.15);
+  animation:cardPulse 4s ease-in-out infinite;
+}
+.laptop-card::before{
+  content:'';position:absolute;inset:-1px;border-radius:16px;
+  background:linear-gradient(135deg,rgba(163,113,247,0.3),transparent 50%,rgba(163,113,247,0.1));
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  pointer-events:none;
+}
+@keyframes cardPulse{0%,100%{box-shadow:0 0 40px rgba(163,113,247,0.08);}50%{box-shadow:0 0 60px rgba(163,113,247,0.15);}}
+
+.card-label{
+  font-family:var(--mono);font-size:0.58em;letter-spacing:2px;text-transform:uppercase;
+  color:var(--purple);margin-bottom:4px;display:flex;align-items:center;gap:6px;
+}
+.card-label::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--purple);
+  box-shadow:0 0 8px var(--purple);animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+.card-title{font-family:var(--head);font-size:1.1em;font-weight:800;color:#e6edf3;margin-bottom:2px;}
+.card-sub{font-family:var(--mono);font-size:0.62em;color:var(--muted);margin-bottom:18px;}
+
+/* HOST LAYER inside laptop */
+.host-layer{
+  background:rgba(163,113,247,0.05);
+  border:1px solid rgba(163,113,247,0.2);
+  border-radius:10px;
+  padding:14px;
+  margin-bottom:12px;
+}
+.layer-label{font-family:var(--mono);font-size:0.55em;letter-spacing:2px;text-transform:uppercase;
+  color:var(--purple);margin-bottom:10px;opacity:0.7;}
+
+.ai-component{
+  background:linear-gradient(135deg,rgba(163,113,247,0.15),rgba(163,113,247,0.05));
+  border:1px solid rgba(163,113,247,0.35);
+  border-radius:8px;padding:12px;text-align:center;
+  position:relative;overflow:hidden;
+}
+.ai-component::after{
+  content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;
+  background:conic-gradient(transparent,rgba(163,113,247,0.08),transparent 30%);
+  animation:spin 6s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.ai-icon{font-size:1.6em;margin-bottom:6px;display:block;}
+.ai-name{font-family:var(--head);font-size:0.82em;font-weight:700;color:#e6edf3;margin-bottom:2px;}
+.ai-detail{font-family:var(--mono);font-size:0.58em;color:var(--purple);opacity:0.8;}
+
+/* VM inside laptop */
+.vm-layer{
+  background:rgba(56,189,170,0.04);
+  border:1px dashed rgba(56,189,170,0.25);
+  border-radius:10px;
+  padding:14px;
+}
+.vm-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+
+.mini-comp{
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:6px;padding:8px;
+  text-align:center;
+  transition:all 0.3s;
+  cursor:default;
+  position:relative;
+  overflow:hidden;
+}
+.mini-comp::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,transparent,rgba(56,189,170,0.03));
+  opacity:0;transition:opacity 0.3s;
+}
+.mini-comp:hover::before{opacity:1;}
+.mini-comp:hover{border-color:rgba(56,189,170,0.4);transform:translateY(-1px);}
+
+.mc-icon{font-size:1.1em;display:block;margin-bottom:4px;}
+.mc-name{font-family:var(--mono);font-size:0.58em;color:var(--teal);font-weight:600;display:block;}
+.mc-port{font-family:var(--mono);font-size:0.5em;color:var(--muted);display:block;margin-top:1px;}
+
+/* ─── MIDDLE FLOW ─── */
+.middle-flow{
+  flex:1;
+  display:flex;flex-direction:column;gap:16px;
+  position:relative;
+}
+
+/* DATA FLOW LINE */
+.flow-connector{
+  display:flex;align-items:center;gap:0;
+  position:relative;
+}
+.flow-line{
+  flex:1;height:2px;
+  background:linear-gradient(90deg,transparent,var(--teal),transparent);
+  position:relative;overflow:hidden;
+}
+.flow-line::after{
+  content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.6),transparent);
+  animation:flowAnim 2s linear infinite;
+}
+.flow-line.orange{background:linear-gradient(90deg,transparent,var(--orange),transparent);}
+.flow-line.orange::after{animation:flowAnim 1.5s linear infinite;}
+.flow-line.purple{background:linear-gradient(90deg,transparent,var(--purple),transparent);}
+.flow-line.purple::after{animation:flowAnim 2.5s linear infinite;}
+@keyframes flowAnim{to{left:100%;}}
+
+.flow-label{
+  font-family:var(--mono);font-size:0.55em;color:var(--muted);
+  text-align:center;padding:0 8px;white-space:nowrap;
+}
+.flow-arrow{color:var(--teal);font-size:0.8em;margin:0 4px;}
+.flow-arrow.orange{color:var(--orange);}
+
+/* PIPELINE STAGES */
+.pipeline{
+  display:flex;flex-direction:column;gap:8px;
+  flex:1;justify-content:center;
+}
+
+.stage{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:10px 14px;
+  display:flex;align-items:center;gap:10px;
+  position:relative;overflow:hidden;
+  transition:all 0.3s;
+  cursor:default;
+}
+.stage::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  border-radius:3px 0 0 3px;
+}
+.stage.s-wazuh::before{background:var(--red);}
+.stage.s-n8n::before{background:var(--orange);}
+.stage.s-ai::before{background:var(--purple);}
+.stage.s-influx::before{background:var(--teal);}
+.stage.s-block::before{background:var(--green);}
+
+.stage:hover{transform:translateX(2px);border-color:rgba(56,189,170,0.3);}
+
+.stage-icon{font-size:1.2em;flex-shrink:0;width:28px;text-align:center;}
+.stage-content{flex:1;}
+.stage-name{font-family:var(--head);font-size:0.78em;font-weight:700;color:#e6edf3;margin-bottom:1px;}
+.stage-detail{font-family:var(--mono);font-size:0.56em;color:var(--muted);}
+.stage-badge{
+  font-family:var(--mono);font-size:0.52em;
+  padding:2px 7px;border-radius:3px;flex-shrink:0;
+}
+.sb-red{background:rgba(248,81,73,0.12);border:1px solid rgba(248,81,73,0.3);color:var(--red);}
+.sb-orange{background:rgba(240,136,62,0.12);border:1px solid rgba(240,136,62,0.3);color:var(--orange);}
+.sb-purple{background:var(--purple2);border:1px solid rgba(163,113,247,0.3);color:var(--purple);}
+.sb-teal{background:var(--teal2);border:1px solid rgba(56,189,170,0.3);color:var(--teal);}
+.sb-green{background:var(--green2);border:1px solid rgba(63,185,80,0.3);color:var(--green);}
+
+/* ARROWS between stages */
+.stage-arrow{
+  text-align:center;font-family:var(--mono);font-size:0.65em;
+  color:var(--muted2);padding:1px 0;
+  position:relative;
+}
+.stage-arrow::before,.stage-arrow::after{
+  content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:1px;background:var(--muted2);opacity:0.4;
+}
+
+/* ─── RIGHT PANEL (outputs) ─── */
+.right-panel{
+  width:220px;flex-shrink:0;
+  display:flex;flex-direction:column;gap:12px;
+}
+
+.output-card{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:14px;
+  flex:1;
+  display:flex;flex-direction:column;gap:8px;
+  position:relative;overflow:hidden;
+}
+.output-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.oc-telegram::before{background:linear-gradient(90deg,var(--teal),transparent);}
+.oc-iptables::before{background:linear-gradient(90deg,var(--green),transparent);}
+.oc-influx::before{background:linear-gradient(90deg,var(--orange),transparent);}
+.oc-agents::before{background:linear-gradient(90deg,var(--purple),transparent);}
+
+.output-title{font-family:var(--mono);font-size:0.6em;letter-spacing:1.5px;text-transform:uppercase;
+  margin-bottom:4px;}
+.ot-teal{color:var(--teal);}
+.ot-green{color:var(--green);}
+.ot-orange{color:var(--orange);}
+.ot-purple{color:var(--purple);}
+
+.output-item{
+  display:flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:0.62em;color:var(--text);
+  padding:5px 7px;
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:5px;
+  position:relative;overflow:hidden;
+}
+.oi-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.oi-teal{background:var(--teal);box-shadow:0 0 6px var(--teal);}
+.oi-green{background:var(--green);box-shadow:0 0 6px var(--green);}
+.oi-orange{background:var(--orange);box-shadow:0 0 6px var(--orange);}
+.oi-red{background:var(--red);box-shadow:0 0 6px var(--red);}
+.oi-purple{background:var(--purple);box-shadow:0 0 6px var(--purple);}
+.oi-yellow{background:var(--yellow);box-shadow:0 0 6px var(--yellow);}
+
+/* Pulse animation for active dots */
+.live-dot{animation:livePulse 2s infinite;}
+@keyframes livePulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(0.7);}}
+
+/* TAILSCALE NETWORK BAR */
+.tailscale-bar{
+  position:relative;z-index:1;
+  margin:0 48px;
+  background:linear-gradient(90deg,rgba(56,189,170,0.04),rgba(56,189,170,0.08),rgba(56,189,170,0.04));
+  border:1px solid rgba(56,189,170,0.2);
+  border-radius:10px;
+  padding:12px 24px;
+  margin-top:20px;
+  display:flex;align-items:center;gap:0;
+  overflow:hidden;
+}
+.tailscale-bar::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(56,189,170,0.05),transparent);
+  animation:scanLine 3s linear infinite;
+}
+@keyframes scanLine{from{transform:translateX(-100%);}to{transform:translateX(100%);}}
+
+.ts-label{font-family:var(--mono);font-size:0.6em;color:var(--teal);letter-spacing:2px;
+  text-transform:uppercase;white-space:nowrap;margin-right:20px;flex-shrink:0;}
+.ts-nodes{display:flex;gap:12px;flex:1;overflow:hidden;}
+.ts-node{
+  display:flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:0.6em;color:var(--muted);
+  background:rgba(56,189,170,0.06);border:1px solid rgba(56,189,170,0.15);
+  border-radius:5px;padding:4px 8px;white-space:nowrap;flex-shrink:0;
+}
+.ts-dot{width:5px;height:5px;border-radius:50%;background:var(--teal);
+  box-shadow:0 0 5px var(--teal);animation:livePulse 2s infinite;}
+.ts-dot.offline{background:var(--muted2);box-shadow:none;animation:none;}
+.ts-dot.attack{background:var(--red);box-shadow:0 0 5px var(--red);}
+
+/* SCANNING LINE EFFECT on stages */
+.stage::after{
+  content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.02),transparent);
+  animation:stageScan 4s linear infinite;
+}
+@keyframes stageScan{to{left:150%;}}
+
+/* LEGEND */
+.legend{
+  position:relative;z-index:1;
+  display:flex;gap:20px;flex-wrap:wrap;justify-content:center;
+  padding:16px 48px;
+  border-top:1px solid var(--border);
+  margin-top:8px;
+}
+.leg{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:0.6em;color:var(--muted);}
+.leg-dot{width:8px;height:8px;border-radius:2px;}
+
+/* TOOLTIP */
+.stage[data-tip]:hover::before{
+  content:attr(data-tip);
+  position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:#0d1117;border:1px solid var(--border);
+  padding:5px 10px;border-radius:5px;
+  font-family:var(--mono);font-size:0.6em;color:var(--text);
+  white-space:nowrap;z-index:100;pointer-events:none;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Wazuh AI-SOC</div>
+  <div class="header-tag">ARCHITECTURE · v12.9.12 · LIVE</div>
+</div>
+
+<div class="canvas">
+
+  <div class="diagram-title">
+    <h1>System <span>Architecture</span></h1>
+    <p>LENOVO LEGION LOQ · TAILSCALE MESH · FOUNDATION-SEC-8B</p>
+  </div>
+
+  <div class="diagram">
+
+    <!-- ─── LEFT: LOQ LAPTOP ─── -->
+    <div class="laptop-card">
+      <div class="card-label">HOST MACHINE</div>
+      <div class="card-title">Lenovo Legion LOQ</div>
+      <div class="card-sub">Windows 11 · RTX 5060 8GB · 16GB RAM</div>
+
+      <!-- AI on host -->
+      <div class="host-layer">
+        <div class="layer-label">◈ Host Layer — Direct GPU</div>
+        <div class="ai-component">
+          <span class="ai-icon">🧠</span>
+          <div class="ai-name">Foundation-Sec-8B</div>
+          <div class="ai-detail">Ollama · Q4_K_M · 5.4GB VRAM</div>
+          <div class="ai-detail" style="margin-top:4px;color:var(--muted2);">port 11434 · 3–8s/alert</div>
+        </div>
+      </div>
+
+      <!-- Ubuntu VM -->
+      <div class="vm-layer">
+        <div class="layer-label">◈ Ubuntu VM — Docker</div>
+        <div class="vm-grid">
+          <div class="mini-comp">
+            <span class="mc-icon">🛡️</span>
+            <span class="mc-name">Wazuh</span>
+            <span class="mc-port">:443 · :1514</span>
+          </div>
+          <div class="mini-comp">
+            <span class="mc-icon">⚙️</span>
+            <span class="mc-name">n8n</span>
+            <span class="mc-port">:5678 · 42 nodes</span>
+          </div>
+          <div class="mini-comp">
+            <span class="mc-icon">📊</span>
+            <span class="mc-name">InfluxDB</span>
+            <span class="mc-port">:8086 · 2 buckets</span>
+          </div>
+          <div class="mini-comp">
+            <span class="mc-icon">🐍</span>
+            <span class="mc-name">blocker.py</span>
+            <span class="mc-port">:9999 · iptables</span>
+          </div>
+          <div class="mini-comp" style="grid-column:1/-1;">
+            <span class="mc-icon">🌐</span>
+            <span class="mc-name">Tailscale</span>
+            <span class="mc-port">100.x.x.x · Tailnet bridge</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── MIDDLE: PIPELINE ─── -->
+    <div class="middle-flow">
+
+      <div class="pipeline">
+
+        <!-- WAZUH -->
+        <div class="stage s-wazuh">
+          <div class="stage-icon">🔴</div>
+          <div class="stage-content">
+            <div class="stage-name">Wazuh SIEM</div>
+            <div class="stage-detail">v4.14.2 · rule level ≥5 triggers webhook</div>
+          </div>
+          <span class="stage-badge sb-red">DETECT</span>
+        </div>
+
+        <div class="stage-arrow">↓ custom-webhook.py → HTTP POST</div>
+
+        <!-- N8N -->
+        <div class="stage s-n8n">
+          <div class="stage-icon">⚙️</div>
+          <div class="stage-content">
+            <div class="stage-name">n8n Workflow</div>
+            <div class="stage-detail">42 nodes · maxConcurrency:1 · v12.9.12</div>
+          </div>
+          <span class="stage-badge sb-orange">PROCESS</span>
+        </div>
+
+        <div class="stage-arrow">↓ HTTP POST /api/chat</div>
+
+        <!-- AI -->
+        <div class="stage s-ai">
+          <div class="stage-icon">🧠</div>
+          <div class="stage-content">
+            <div class="stage-name">Foundation-Sec-8B</div>
+            <div class="stage-detail">Ollama · 100.x.x.x:11434 · 79% accuracy</div>
+          </div>
+          <span class="stage-badge sb-purple">ANALYSE</span>
+        </div>
+
+        <div class="stage-arrow">↓ threat_type · MITRE · confidence · action</div>
+
+        <!-- DECISION ENGINE -->
+        <div class="stage s-n8n" style="border-color:rgba(240,136,62,0.35);">
+          <div class="stage-icon">⚖️</div>
+          <div class="stage-content">
+            <div class="stage-name">AI Decision Engine</div>
+            <div class="stage-detail">effectiveCount thresholds · MITRE map · ISOLATE overrides</div>
+          </div>
+          <span class="stage-badge sb-orange">DECIDE</span>
+        </div>
+
+        <div class="stage-arrow">↓ MONITOR / INVESTIGATE / BLOCK_IP / ISOLATE_HOST</div>
+
+        <!-- INFLUXDB -->
+        <div class="stage s-influx">
+          <div class="stage-icon">📊</div>
+          <div class="stage-content">
+            <div class="stage-name">InfluxDB</div>
+            <div class="stage-detail">alerts bucket · blocked_ips bucket · dedup store</div>
+          </div>
+          <span class="stage-badge sb-teal">STORE</span>
+        </div>
+
+        <div class="stage-arrow">↓ verified response from blocker.py</div>
+
+        <!-- BLOCKER -->
+        <div class="stage s-block">
+          <div class="stage-icon">🚫</div>
+          <div class="stage-content">
+            <div class="stage-name">blocker.py + iptables</div>
+            <div class="stage-detail">port 9999 · block / unblock / isolate / unisolate</div>
+          </div>
+          <span class="stage-badge sb-green">RESPOND</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ─── RIGHT: OUTPUTS ─── -->
+    <div class="right-panel">
+
+      <!-- Telegram -->
+      <div class="output-card oc-telegram">
+        <div class="output-title ot-teal">◈ Telegram Alerts</div>
+        <div class="output-item"><div class="oi-dot oi-teal live-dot"></div>👀 MONITOR</div>
+        <div class="output-item"><div class="oi-dot oi-yellow live-dot"></div>🔍 INVESTIGATE</div>
+        <div class="output-item"><div class="oi-dot oi-orange live-dot"></div>🚫 BLOCK_IP</div>
+        <div class="output-item"><div class="oi-dot oi-green live-dot"></div>✅ CONFIRMED</div>
+        <div class="output-item"><div class="oi-dot oi-red live-dot"></div>🔒 ISOLATE</div>
+        <div class="output-item"><div class="oi-dot oi-teal live-dot"></div>🔔 FIM ALERT</div>
+      </div>
+
+      <!-- IP Blocking -->
+      <div class="output-card oc-iptables">
+        <div class="output-title ot-green">◈ IP Blocking</div>
+        <div class="output-item"><div class="oi-dot oi-green"></div>iptables -I INPUT 1</div>
+        <div class="output-item"><div class="oi-dot oi-green"></div>FORWARD chain DROP</div>
+        <div class="output-item"><div class="oi-dot oi-orange"></div>blocker.py v3.0</div>
+        <div class="output-item"><div class="oi-dot oi-teal"></div>3–6s response</div>
+      </div>
+
+      <!-- Agents -->
+      <div class="output-card oc-agents">
+        <div class="output-title ot-purple">◈ Monitored Agents</div>
+        <div class="output-item"><div class="oi-dot oi-green live-dot"></div>SIEM-SERVER</div>
+        <div class="output-item"><div class="oi-dot oi-green live-dot"></div>LAB-SERVER</div>
+        <div class="output-item"><div class="oi-dot oi-orange"></div>WORKSTATION-01</div>
+        <div class="output-item"><div class="oi-dot oi-red"></div>SERVER-01 ✗</div>
+        <div class="output-item"><div class="oi-dot oi-red"></div>ATTACKER-KALI (attacker)</div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- TAILSCALE NETWORK BAR -->
+  <div class="tailscale-bar">
+    <div class="ts-label">⬡ Tailscale Mesh · 100.x.x.x/10</div>
+    <div class="ts-nodes">
+      <div class="ts-node"><div class="ts-dot"></div>SIEM-SERVER · 100.x.x.x</div>
+      <div class="ts-node"><div class="ts-dot"></div>LOQ · 100.x.x.x</div>
+      <div class="ts-node"><div class="ts-dot"></div>LAB-SERVER · 100.x.x.x</div>
+      <div class="ts-node"><div class="ts-dot"></div>WORKSTATION-01 · 100.x.x.x</div>
+      <div class="ts-node"><div class="ts-dot offline"></div>SERVER-01 · disconnected</div>
+      <div class="ts-node"><div class="ts-dot attack"></div>ATTACKER-KALI · 100.x.x.x</div>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="leg"><div class="leg-dot" style="background:var(--red)"></div>Detection Layer</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--orange)"></div>Processing Layer</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--purple)"></div>AI Analysis</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--teal)"></div>Storage / Memory</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--green)"></div>Response / Block</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--muted2)"></div>Offline / Disconnected</div>
+  </div>
+
+  <div style="margin-top:14px;padding:14px 18px;border-top:1px solid var(--border);font-family:var(--mono);font-size:0.72em;color:var(--muted2);text-align:center;">
+    Author: <span style="color:var(--teal);">Aditya Suresh Acharya</span> &nbsp;·&nbsp; © 2026
+  </div>
+
+</div>
+
+<script>
+// Animate stage highlights sequentially to show data flow
+const stages = document.querySelectorAll('.stage');
+let current = 0;
+setInterval(() => {
+  stages.forEach(s => s.style.background = '');
+  stages[current].style.background = 'rgba(56,189,170,0.04)';
+  current = (current + 1) % stages.length;
+}, 800);
+
+// Tailscale node ping animation stagger
+document.querySelectorAll('.ts-dot:not(.offline)').forEach((dot, i) => {
+  dot.style.animationDelay = `${i * 0.3}s`;
+});
+</script>
+
+</body>
+</html>

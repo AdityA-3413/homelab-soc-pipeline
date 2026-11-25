@@ -1,0 +1,4 @@
+#!/bin/sh
+ALERT_FILE=$1
+WEBHOOK_URL=$2
+curl -X POST -H "Content-Type: application/json" -d @${ALERT_FILE} ${WEBHOOK_URL}
